@@ -3,198 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NISP - Sistema Integrado Bahia (Gestão Completa)</title>
+    <title>NISP - Sistema Integrado (Produção)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
-        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; padding-top: 80px; } /* Padding for navbar */
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; padding-top: 80px; }
         .header-gradient { background: linear-gradient(90deg, #1e3a8a 0%, #1e40af 100%); }
         .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .status-badge { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.75rem; }
         
-        /* Navbar Styles */
-        .nav-link { position: relative; cursor: pointer; }
-        .dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: white; min-width: 200px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-radius: 0.5rem; z-index: 50; overflow: hidden; }
+        /* Navbar & Components */
+        .dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: white; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-radius: 0.5rem; z-index: 50; border: 1px solid #e5e7eb; }
         .nav-item:hover .dropdown-menu { display: block; }
-        .dropdown-item { display: block; padding: 0.75rem 1rem; color: #4b5563; font-size: 0.875rem; transition: background 0.2s; }
-        .dropdown-item:hover { background-color: #f3f4f6; color: #1e3a8a; }
-
-        /* Modal Styles */
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow-x: hidden; overflow-y: visible !important; }
-        
-        /* Accordion Styles */
+        .dropdown-item { display: block; padding: 0.75rem 1rem; color: #4b5563; font-size: 0.875rem; transition: background 0.2s; cursor: pointer; }
+        .dropdown-item:hover { background-color: #eff6ff; color: #1e3a8a; }
         details > summary { list-style: none; cursor: pointer; transition: background-color 0.2s; }
         details > summary::-webkit-details-marker { display: none; }
-        details[open] > summary { border-bottom: 1px solid #f3f4f6; }
-        details[open] > summary .chevron { transform: rotate(180deg); }
-        .chevron { transition: transform 0.3s ease; }
-
-        /* Loading overlay */
+        .table-container { max-height: 500px; overflow-y: auto; }
+        .page-section { display: none; }
+        .page-section.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         #loading-overlay { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
         .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #loading-text { margin-top: 1rem; color: #4b5563; font-weight: 500; }
-
-        /* Table Scroll */
-        .table-container { max-height: 500px; overflow-y: auto; }
-        .table-container::-webkit-scrollbar { width: 6px; height: 6px; }
-        .table-container::-webkit-scrollbar-track { background: #f1f1f1; }
-        .table-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-
-        /* Page Management */
-        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
-        .page-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="text-gray-800 min-h-screen relative">
 
     <div id="loading-overlay">
         <div class="loader"></div>
-        <p id="loading-text">Carregando dados...</p>
+        <p id="loading-text" class="mt-4 text-gray-500 font-bold">Conectando ao Banco SQL...</p>
     </div>
 
-    <nav class="fixed top-0 w-full bg-blue-900 text-white shadow-lg z-40 h-16 flex items-center px-6 justify-between">
+    <nav class="fixed top-0 w-full bg-blue-900 text-white shadow-lg z-40 h-16 flex items-center px-4 md:px-8 justify-between">
         <div class="flex items-center gap-4">
-            <div class="w-10 h-10 bg-white/10 rounded flex items-center justify-center">
+            <div class="w-10 h-10 bg-white/10 rounded flex items-center justify-center backdrop-blur-sm border border-white/20">
                 <i class="fas fa-shield-alt text-xl"></i>
             </div>
-            <h1 class="font-black text-xl tracking-wider">NISP <span class="font-light opacity-70 text-sm">| SISTEMA INTEGRADO</span></h1>
+            <div>
+                <h1 class="font-black text-xl tracking-wider leading-none">NISP</h1>
+                <p class="text-[10px] opacity-70 uppercase tracking-widest">Base de Dados Real</p>
+            </div>
         </div>
 
-        <div class="flex items-center gap-6">
-            <div class="nav-item relative group h-16 flex items-center cursor-pointer">
-                <span class="font-bold uppercase text-sm tracking-wide flex items-center gap-2">
-                    <i class="fas fa-chart-line"></i> Painel <i class="fas fa-chevron-down text-xs opacity-50"></i>
-                </span>
+        <div class="flex items-center gap-2 md:gap-6">
+            <div class="nav-item relative group h-16 flex items-center cursor-pointer px-2">
+                <span class="font-bold uppercase text-xs md:text-sm tracking-wide flex items-center gap-2 hover:text-blue-200"><i class="fas fa-chart-line"></i> Painel <i class="fas fa-chevron-down text-[10px] opacity-50"></i></span>
                 <div class="dropdown-menu mt-1">
-                    <a onclick="navigateTo('page-municipios')" class="dropdown-item"><i class="fas fa-map-marker-alt w-5 text-center mr-2"></i> Municípios</a>
-                    <a onclick="navigateTo('page-cursos-view')" class="dropdown-item"><i class="fas fa-graduation-cap w-5 text-center mr-2"></i> Cursos (Visão Geral)</a>
-                    <a onclick="navigateTo('page-alunos-view')" class="dropdown-item"><i class="fas fa-users w-5 text-center mr-2"></i> Alunos (Busca)</a>
+                    <a onclick="navigateTo('page-municipios')" class="dropdown-item">Municípios</a>
+                    <a onclick="navigateTo('page-cursos-view')" class="dropdown-item">Cursos (Geral)</a>
+                    <a onclick="navigateTo('page-alunos-view')" class="dropdown-item">Alunos (Busca)</a>
                 </div>
             </div>
-
-            <div class="nav-item relative group h-16 flex items-center cursor-pointer">
-                <span class="font-bold uppercase text-sm tracking-wide flex items-center gap-2">
-                    <i class="fas fa-database"></i> Controle <i class="fas fa-chevron-down text-xs opacity-50"></i>
-                </span>
+            <div class="nav-item relative group h-16 flex items-center cursor-pointer px-2">
+                <span class="font-bold uppercase text-xs md:text-sm tracking-wide flex items-center gap-2 hover:text-blue-200"><i class="fas fa-database"></i> Controle <i class="fas fa-chevron-down text-[10px] opacity-50"></i></span>
                 <div class="dropdown-menu mt-1">
-                    <a onclick="navigateTo('page-controle-cidades')" class="dropdown-item"><i class="fas fa-city w-5 text-center mr-2"></i> Controle Cidades</a>
-                    <a onclick="navigateTo('page-controle-alunos')" class="dropdown-item"><i class="fas fa-user-edit w-5 text-center mr-2"></i> Controle Alunos</a>
+                    <a onclick="navigateTo('page-controle-cidades')" class="dropdown-item">Controle Cidades</a>
+                    <a onclick="navigateTo('page-controle-alunos')" class="dropdown-item">Controle Alunos</a>
                 </div>
             </div>
-
-            <button onclick="toggleModal('modal-editor')" class="ml-4 bg-blue-800 hover:bg-blue-700 p-2 rounded-full transition-colors" title="Importar/Exportar Dados">
-                <i class="fas fa-cog"></i>
+            <button onclick="toggleModal('modal-editor')" class="ml-2 bg-blue-800 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded shadow border border-blue-700/50 flex items-center gap-2">
+                <i class="fas fa-cloud-upload-alt text-white"></i>
+                <span class="hidden md:inline text-xs font-bold">Importar CSVs</span>
             </button>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto p-4 md:p-6">
-
+    <div class="max-w-7xl mx-auto p-4 md:p-6 pb-20">
+        
         <div id="page-municipios" class="page-section active">
             <div class="bg-white card-shadow rounded-lg overflow-hidden border border-gray-200">
-                
                 <div class="header-gradient text-white p-6">
                     <div class="mb-6 bg-white/10 p-2 rounded flex flex-col md:flex-row items-center gap-2 backdrop-blur-sm border border-white/20">
-                        <label class="text-xs font-bold uppercase text-blue-100 pl-2 hidden md:inline"><i class="fas fa-map-marker-alt mr-1"></i> Município:</label>
-                        <select id="city-selector" onchange="window.switchCity(this.value)" class="bg-blue-900/50 text-white border border-blue-400/30 text-sm rounded px-3 py-1 focus:outline-none focus:bg-blue-900 cursor-pointer flex-1 font-bold w-full md:w-auto">
-                            <option value="" disabled selected>Carregando lista...</option>
+                        <label class="text-xs font-bold uppercase text-blue-100 pl-2 hidden md:inline">Município:</label>
+                        <select id="city-selector" onchange="loadCity(this.value)" class="bg-blue-900/50 text-white border border-blue-400/30 text-sm rounded px-3 py-1 focus:outline-none focus:bg-blue-900 cursor-pointer flex-1 font-bold w-full md:w-auto">
+                            <option value="" disabled selected>Carregando...</option>
                         </select>
                     </div>
-
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-                        <div>
-                            <h2 class="text-xs font-bold tracking-widest opacity-80">DASHBOARD MUNICIPAL</h2>
-                            <h1 class="text-3xl font-black uppercase tracking-wide" id="view-municipio">...</h1>
-                            <div class="inline-block bg-blue-800/50 px-3 py-1 rounded text-xs font-mono mt-1 border border-blue-400/30">
-                                Território: <span id="view-territorio">...</span>
-                            </div>
-                        </div>
+                    <div>
+                        <h1 class="text-3xl font-black uppercase tracking-wide" id="view-municipio">...</h1>
+                        <div class="inline-block bg-blue-800/50 px-3 py-1 rounded text-xs font-mono mt-1 border border-blue-400/30">Território: <span id="view-territorio">...</span></div>
                     </div>
                 </div>
 
                 <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div class="md:col-span-4 flex flex-col gap-6">
-                        <div class="bg-slate-50 rounded-lg border border-slate-200 p-5">
-                            <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2 mb-4 flex items-center gap-2">
-                                <i class="fas fa-info-circle text-blue-600"></i> Informações
-                            </h3>
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-500 font-medium">Possui Guarda?</span>
-                                    <span id="badge-possui" class="status-badge bg-gray-100 text-gray-500">...</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-500 font-medium">Guarda Armada?</span>
-                                    <span id="badge-armada" class="status-badge bg-gray-100 text-gray-500">...</span>
+                        <div class="bg-slate-50 rounded-lg border border-slate-200 p-5 space-y-4">
+                            <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2">Informações</h3>
+                            <div class="flex justify-between"><span class="text-sm text-gray-500">Possui Guarda?</span><span id="badge-possui" class="status-badge bg-gray-100">...</span></div>
+                            <div class="flex justify-between"><span class="text-sm text-gray-500">Guarda Armada?</span><span id="badge-armada" class="status-badge bg-gray-100">...</span></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <div class="text-blue-600 text-xs font-bold uppercase">Efetivo</div><div class="text-3xl font-black text-gray-800" id="view-efetivo">...</div>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <div class="text-blue-600 text-xs font-bold uppercase">População</div><div class="text-2xl font-black text-gray-800" id="view-populacao">...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg border border-gray-200 p-5 text-xs space-y-3">
+                            <div>
+                                <span class="font-bold text-gray-500 block mb-1">Prefeito(a)</span> 
+                                <span id="view-prefeito" class="text-sm text-gray-800 font-bold">...</span>
+                            </div>
+                            <div class="grid grid-cols-1 gap-1 pl-2 border-l-2 border-blue-100">
+                                <div class="flex items-center gap-2"><i class="far fa-envelope text-blue-400 w-4"></i> <span class="text-blue-600 break-all" id="view-email-pref">...</span></div>
+                                <div class="flex items-center gap-2"><i class="fas fa-phone text-blue-400 w-4"></i> <span class="text-gray-600 font-medium" id="view-tel-pref">...</span></div>
+                            </div>
+                            <div class="border-t pt-2 mt-2">
+                                <span class="font-bold text-gray-500 block mb-1">Guarda Municipal</span> 
+                                <div class="grid grid-cols-1 gap-1 pl-2 border-l-2 border-green-100">
+                                    <div class="flex items-center gap-2"><i class="far fa-envelope text-green-600 w-4"></i> <span class="text-blue-600 break-all" id="view-email-gm">...</span></div>
+                                    <div class="flex items-center gap-2"><i class="fas fa-phone text-green-600 w-4"></i> <span class="text-gray-600 font-medium" id="view-tel-gm">...</span></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
-                                <div class="text-blue-600 text-xs font-bold uppercase mb-1">Efetivo</div>
-                                <div class="text-3xl font-black text-gray-800" id="view-efetivo">...</div>
-                                <div class="text-[10px] text-gray-500">Agentes</div>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
-                                <div class="text-blue-600 text-xs font-bold uppercase mb-1">População</div>
-                                <div class="text-2xl font-black text-gray-800" id="view-populacao">...</div>
-                                <div class="text-[10px] text-gray-500">Habitantes</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white rounded-lg border border-gray-200 p-5">
-                            <h3 class="text-gray-700 font-bold border-b border-gray-100 pb-2 mb-3 flex items-center gap-2 text-sm uppercase">
-                                <i class="fas fa-address-book text-gray-400"></i> Contatos
-                            </h3>
-                            <div class="space-y-4">
-                                <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                                    <div class="text-xs">
-                                        <span class="font-bold text-gray-500 block mb-1">Prefeito(a):</span> 
-                                        <span class="text-gray-800 font-medium block mb-2" id="view-prefeito">...</span>
-                                        <span class="font-bold text-gray-500">Email:</span> <span class="text-blue-600 break-all" id="view-email-pref">...</span>
-                                    </div>
-                                </div>
-                                <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                                    <div class="text-xs">
-                                        <span class="font-bold text-gray-500 block mb-1">Guarda Municipal:</span> 
-                                        <span class="text-blue-600 break-all" id="view-email-gm">...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
-
                     <div class="md:col-span-8 flex flex-col gap-6">
-                        <div class="bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-lg p-6 shadow-md border-l-4 border-blue-500">
-                            <div class="grid grid-cols-3 gap-4 text-center">
-                                <div>
-                                    <div class="text-3xl font-black text-white" id="view-total-certs">0</div>
-                                    <div class="text-[10px] uppercase font-bold text-slate-400">Certificações</div>
-                                </div>
-                                <div>
-                                    <div class="text-3xl font-black text-green-400" id="view-unique-grads">0</div>
-                                    <div class="text-[10px] uppercase font-bold text-slate-400">Alunos Únicos</div>
-                                </div>
-                                <div>
-                                    <div class="text-3xl font-black text-blue-400" id="view-coverage-pct">0%</div>
-                                    <div class="text-[10px] uppercase font-bold text-slate-400">Cobertura</div>
-                                </div>
-                            </div>
+                        <div class="bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-lg p-6 shadow-md border-l-4 border-blue-500 grid grid-cols-3 gap-4 text-center">
+                            <div><div class="text-3xl font-black text-white" id="view-total-certs">0</div><div class="text-[10px] uppercase font-bold text-slate-400">Certificações</div></div>
+                            <div><div class="text-3xl font-black text-green-400" id="view-unique-grads">0</div><div class="text-[10px] uppercase font-bold text-slate-400">Alunos Únicos</div></div>
+                            <div><div class="text-3xl font-black text-blue-400" id="view-coverage-pct">0%</div><div class="text-[10px] uppercase font-bold text-slate-400">Cobertura</div></div>
                         </div>
-
-                        <div>
-                            <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2">
-                                <i class="fas fa-graduation-cap text-blue-600"></i> Histórico de Cursos
-                            </h3>
-                            <div id="courses-container" class="space-y-3">
-                                </div>
-                        </div>
+                        <div><h3 class="text-gray-700 font-bold mb-3">Histórico de Cursos</h3><div id="courses-container" class="space-y-3"></div></div>
                     </div>
                 </div>
             </div>
@@ -202,84 +140,46 @@
 
         <div id="page-cursos-view" class="page-section">
             <div class="bg-white card-shadow rounded-lg p-6">
-                <h2 class="text-2xl font-black text-gray-800 mb-6 pb-4 border-b flex items-center gap-3">
-                    <i class="fas fa-graduation-cap text-blue-900"></i> Painel de Cursos por Edição
-                </h2>
-                <div id="global-courses-list" class="space-y-4">
-                    </div>
+                <h2 class="text-2xl font-black text-gray-800 mb-6 pb-4 border-b">Painel de Cursos por Edição</h2>
+                <div id="global-courses-list" class="space-y-4"></div>
             </div>
         </div>
 
         <div id="page-alunos-view" class="page-section">
             <div class="bg-white card-shadow rounded-lg p-6">
-                <div class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b gap-4">
-                    <h2 class="text-2xl font-black text-gray-800 flex items-center gap-3">
-                        <i class="fas fa-users text-blue-900"></i> Banco Geral de Alunos
-                    </h2>
-                    <div class="relative w-full md:w-1/3">
-                        <input type="text" id="student-search" onkeyup="filterStudents()" placeholder="Buscar aluno ou CPF..." class="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:border-blue-500 bg-gray-50">
-                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                    </div>
+                <div class="flex justify-between items-center mb-6 pb-4 border-b gap-4">
+                    <h2 class="text-2xl font-black text-gray-800">Busca de Alunos</h2>
+                    <input type="text" id="student-search" onkeyup="filterStudents()" placeholder="Buscar por Nome ou CPF..." class="w-full md:w-1/3 pl-4 py-2 border rounded-full bg-gray-50 focus:border-blue-500 outline-none">
                 </div>
-                
                 <div class="table-container border rounded-lg">
                     <table class="w-full text-sm text-left text-gray-600">
                         <thead class="text-xs text-white uppercase bg-blue-900 sticky top-0">
-                            <tr>
-                                <th class="px-4 py-3">Nome</th>
-                                <th class="px-4 py-3">CPF</th>
-                                <th class="px-4 py-3">Município</th>
-                                <th class="px-4 py-3">Curso</th>
-                                <th class="px-4 py-3">Status</th>
-                            </tr>
+                            <tr><th class="px-4 py-3">Nome</th><th class="px-4 py-3">CPF</th><th class="px-4 py-3">Município</th><th class="px-4 py-3">Curso</th><th class="px-4 py-3">Status</th></tr>
                         </thead>
-                        <tbody id="global-students-table" class="divide-y divide-gray-100">
-                            </tbody>
+                        <tbody id="global-students-table" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
-                <div class="mt-2 text-xs text-gray-400 text-right" id="student-count">Mostrando 0 alunos</div>
+                <div class="mt-2 text-xs text-gray-400 text-right" id="student-count">...</div>
             </div>
         </div>
 
         <div id="page-controle-cidades" class="page-section">
             <div class="bg-white card-shadow rounded-lg p-6">
-                <h2 class="text-2xl font-black text-gray-800 mb-4 flex items-center gap-3">
-                    <i class="fas fa-database text-blue-900"></i> Controle de Participação (Cidades)
-                </h2>
-                
+                <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Participação</h2>
                 <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
-                    <h4 class="text-sm font-bold text-blue-800 mb-2">Adicionar Participação</h4>
                     <form id="add-city-course-form" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Município</label>
-                            <input list="city-datalist" id="cc-municipio" class="w-full border p-2 rounded text-sm" required placeholder="Digite o nome...">
-                            <datalist id="city-datalist"></datalist>
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Curso</label>
-                            <input type="text" id="cc-curso" class="w-full border p-2 rounded text-sm" required placeholder="Nome do Curso">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Ano</label>
-                            <input type="text" id="cc-ano" class="w-full border p-2 rounded text-sm" required placeholder="2024">
-                        </div>
+                        <div><label class="text-xs font-bold text-gray-500">Município</label><input list="city-datalist" id="cc-municipio" class="w-full border p-2 rounded text-sm" required><datalist id="city-datalist"></datalist></div>
+                        <div><label class="text-xs font-bold text-gray-500">Curso</label><input type="text" id="cc-curso" class="w-full border p-2 rounded text-sm" required></div>
+                        <div><label class="text-xs font-bold text-gray-500">Ano</label><input type="text" id="cc-ano" class="w-full border p-2 rounded text-sm" required></div>
                         <button type="button" onclick="addCityControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">Adicionar</button>
                     </form>
                 </div>
-
                 <div class="table-container border rounded-lg">
                     <table class="w-full text-sm text-left text-gray-600">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
-                            <tr>
-                                <th class="px-4 py-2">Município</th>
-                                <th class="px-4 py-2">Curso</th>
-                                <th class="px-4 py-2">Ano</th>
-                                <th class="px-4 py-2">Status</th>
-                                <th class="px-4 py-2 text-center">Ações</th>
-                            </tr>
+                            <tr><th class="px-4 py-2">Município</th><th class="px-4 py-2">Curso</th><th class="px-4 py-2">Ano</th><th class="px-4 py-2">Status</th><th class="px-4 py-2 text-center">Ações</th></tr>
                         </thead>
-                        <tbody id="control-cities-table" class="divide-y divide-gray-100">
-                            </tbody>
+                        <tbody id="control-cities-table" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -287,728 +187,498 @@
 
         <div id="page-controle-alunos" class="page-section">
             <div class="bg-white card-shadow rounded-lg p-6">
-                <h2 class="text-2xl font-black text-gray-800 mb-4 flex items-center gap-3">
-                    <i class="fas fa-user-edit text-blue-900"></i> Controle de Alunos (Matrículas)
-                </h2>
-
+                <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Alunos</h2>
                 <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
-                    <h4 class="text-sm font-bold text-blue-800 mb-2">Matricular Aluno</h4>
                     <form id="add-student-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Município</label>
-                            <input list="city-datalist-st" id="ca-municipio" class="w-full border p-2 rounded text-sm" required placeholder="Município">
-                            <datalist id="city-datalist-st"></datalist>
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Curso (Exato)</label>
-                            <input type="text" id="ca-curso" class="w-full border p-2 rounded text-sm" required placeholder="Nome do Curso Existente">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">Nome Aluno</label>
-                            <input type="text" id="ca-nome" class="w-full border p-2 rounded text-sm" required>
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500">CPF</label>
-                            <input type="text" id="ca-cpf" class="w-full border p-2 rounded text-sm">
-                        </div>
+                        <div><label class="text-xs font-bold text-gray-500">Município</label><input list="city-datalist-st" id="ca-municipio" class="w-full border p-2 rounded text-sm" required><datalist id="city-datalist-st"></datalist></div>
+                        <div><label class="text-xs font-bold text-gray-500">Curso</label><input type="text" id="ca-curso" class="w-full border p-2 rounded text-sm" required></div>
+                        <div><label class="text-xs font-bold text-gray-500">Nome</label><input type="text" id="ca-nome" class="w-full border p-2 rounded text-sm" required></div>
+                        <div><label class="text-xs font-bold text-gray-500">CPF</label><input type="text" id="ca-cpf" class="w-full border p-2 rounded text-sm"></div>
                         <button type="button" onclick="addStudentControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">Matricular</button>
                     </form>
                 </div>
-
-                <div class="mb-2">
-                     <input type="text" id="control-student-search" onkeyup="renderControlStudents()" placeholder="Filtrar tabela..." class="w-full border p-2 rounded text-sm">
-                </div>
-
+                <input type="text" id="control-student-search" onkeyup="renderControlStudents()" placeholder="Filtrar tabela..." class="w-full border p-2 rounded text-sm mb-2">
                 <div class="table-container border rounded-lg">
                     <table class="w-full text-sm text-left text-gray-600">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
-                            <tr>
-                                <th class="px-4 py-2">Município</th>
-                                <th class="px-4 py-2">Curso</th>
-                                <th class="px-4 py-2">Aluno</th>
-                                <th class="px-4 py-2">CPF</th>
-                                <th class="px-4 py-2">Status</th>
-                                <th class="px-4 py-2 text-center">Ações</th>
-                            </tr>
+                            <tr><th class="px-4 py-2">Município</th><th class="px-4 py-2">Curso</th><th class="px-4 py-2">Aluno</th><th class="px-4 py-2">CPF</th><th class="px-4 py-2">Status</th><th class="px-4 py-2 text-center">Ações</th></tr>
                         </thead>
-                        <tbody id="control-students-table" class="divide-y divide-gray-100">
-                            </tbody>
+                        <tbody id="control-students-table" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
-
-        <div class="bg-gray-50 border-t border-gray-200 mt-6 p-4 text-center text-xs text-gray-400">
-            NISP &copy; 2026 - Sistema Integrado
         </div>
 
     </div>
 
     <div id="modal-editor" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded shadow-lg z-50 overflow-y-auto max-h-[90vh]">
-            <div class="modal-content py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3 border-b mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">Menu Administrativo</h3>
-                    <div class="modal-close cursor-pointer z-50" onclick="toggleModal('modal-editor')">
-                        <i class="fas fa-times text-gray-500 hover:text-red-500"></i>
-                    </div>
-                </div>
-
-                <div class="flex gap-4 mb-4 border-b">
-                    <button class="tab-btn pb-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600">Importar Dados (CSV)</button>
-                    <button onclick="resetStorage()" class="ml-auto text-xs text-red-500 hover:text-red-700 underline font-bold">Resetar Banco de Dados</button>
-                </div>
-
-                <div id="tab-import" class="space-y-4">
-                    <div class="bg-green-50 border border-green-200 p-4 rounded text-sm text-green-800 mb-2">
-                        <p class="font-bold mb-1"><i class="fas fa-save mr-1"></i> Modo de Persistência Ativo</p>
-                        <p>Os dados são salvos automaticamente no navegador.</p>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 gap-4">
-                        <div class="border p-3 rounded bg-gray-50">
-                            <label class="block text-xs font-bold mb-1">1. Arquivo de Municípios</label>
-                            <input type="file" id="file-municipios" accept=".csv" class="w-full text-sm">
-                        </div>
-                        <div class="border p-3 rounded bg-gray-50">
-                            <label class="block text-xs font-bold mb-1">2. Controle de Cidades</label>
-                            <input type="file" id="file-cidades" accept=".csv" class="w-full text-sm">
-                        </div>
-                        <div class="border p-3 rounded bg-gray-50">
-                            <label class="block text-xs font-bold mb-1">3. Controle de Alunos</label>
-                            <input type="file" id="file-alunos" accept=".csv" class="w-full text-sm">
-                        </div>
-                    </div>
-
-                    <div class="pt-2 text-right">
-                        <button onclick="processFiles()" class="px-6 py-2 bg-blue-600 rounded text-white font-bold hover:bg-blue-700 shadow flex items-center gap-2 ml-auto">
-                            <i class="fas fa-upload"></i> Processar e Salvar
-                        </button>
-                    </div>
-                </div>
+        <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded shadow-lg z-50 p-6">
+            <div class="flex justify-between items-center pb-3 border-b mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Importação de Dados (Admin)</h3>
+                <div class="cursor-pointer" onclick="toggleModal('modal-editor')"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="bg-red-50 border border-red-200 p-4 rounded text-sm text-red-800 mb-4">
+                <p class="font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Atenção</p>
+                <p>A importação irá SUBSTITUIR os dados no banco. Certifique-se que os CSVs estão corretos.</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mb-4">
+                <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">1. Municípios</label><input type="file" id="file-municipios" accept=".csv" class="w-full text-sm"></div>
+                <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">2. Cursos</label><input type="file" id="file-cidades" accept=".csv" class="w-full text-sm"></div>
+                <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">3. Alunos</label><input type="file" id="file-alunos" accept=".csv" class="w-full text-sm"></div>
+            </div>
+            <div class="text-right">
+                <button onclick="processAndUploadFiles()" class="px-6 py-2 bg-blue-600 rounded text-white font-bold hover:bg-blue-700 shadow">Processar e Enviar</button>
             </div>
         </div>
     </div>
 
     <script>
-        const STORAGE_KEY = 'nisp_db_v3_full'; // Chave nova
-        const ALL_CITIES = [
-            "Abaíra","Abaré","Acajutiba","Adustina","Água Fria","Aiquara","Alagoinhas","Alcobaça","Almadina","Amargosa","Amélia Rodrigues","América Dourada","Anagé","Andaraí","Andorinha","Angical","Anguera","Antas","Antônio Cardoso","Antônio Gonçalves","Aporá","Apuarema","Araças","Aracatu","Araci","Aramari","Arataca","Aratuípe","Aurelino Leal","Baianópolis","Baixa Grande","Banzaê","Barra","Barra Da Estiva","Barra Do Choça","Barra Do Mendes","Barra Do Rocha","Barreiras","Barro Alto","Barro Preto","Barrocas","Belmonte","Belo Campo","Biritinga","Boa Nova","Boa Vista Do Tupim","Bom Jesus Da Lapa","Bom Jesus Da Serra","Boninal","Bonito","Boquira","Botuporã","Brejões","Brejolândia","Brotas De Macaúbas","Brumado","Buerarema","Buritirama","Caatiba","Cabaceiras Do Paraguaçu","Cachoeira","Caculé","Caém","Caetanos","Caetité","Cafarnaum","Cairu","Caldeirão Grande","Camacã","Camaçari","Camamu","Campo Alegre De Lourdes","Campo Formoso","Canápolis","Canarana","Canavieiras","Candeal","Candeias","Candiba","Cândido Sales","Cansanção","Canudos","Capela Do Alto Alegre","Capim Grosso","Caraíbas","Caravelas","Cardeal Da Silva","Carinhanha","Casa Nova","Castro Alves","Catolândia","Catu","Caturama","Central","Chorrochó","Cícero Dantas","Cipó","Coaraci","Cocos","Conceição Da Feira","Conceição Do Almeida","Conceição Do Coité","Conceição Do Jacuípe","Conde","Condeúba","Contendas Do Sincorá","Coração De Maria","Cordeiros","Coribe","Coronel João Sá","Correntina","Cotegipe","Cravolândia","Crisópolis","Cristópolis","Cruz Das Almas","Curaçá","Dário Meira","Dias D'Ávila","Dom Basílio","Dom Macedo Costa","Elísio Medrado","Encruzilhada","Entre Rios","Érico Cardoso","Esplanada","Euclides Da Cunha","Eunápolis","Fátima","Feira Da Mata","Feira De Santana","Filadélfia","Firmino Alves","Floresta Azul","Formosa Do Rio Preto","Gandu","Gavião","Gentio Do Ouro","Glória","Gongogi","Governador Mangabeira","Guajeru","Guanambi","Guaratinga","Heliópolis","Iaçu","Ibiassucê","Ibicaraí","Ibicoara","Ibicuí","Ibipeba","Ibipitanga","Ibiquera","Ibirapitanga","Ibirapuã","Ibirataia","Ibitiara","Ibititá","Ibotirama","Ichu","Igaporã","Igrapiúna","Iguaí","Ilhéus","Inhambupe","Ipecaetá","Ipiaú","Ipirá","Ipupiara","Irajuba","Iramaia","Iraquara","Irará","Irecê","Itabela","Itaberaba","Itabuna","Itacaré","Itaeté","Itagi","Itagibá","Itagimirim","Itaguaçu Da Bahia","Itaju Do Colônia","Itajuípe","Itamaraju","Itamari","Itambé","Itanagra","Itanhém","Itaparica","Itapé","Itapebi","Itapicuru","Itapitanga","Itaquara","Itarantim","Itatim","Itiruçu","Itiúba","Itororó","Ituaçu","Ituberá","Iuiú","Jaborandi","Jacaraci","Jacobina","Jaguaquara","Jaguarari","Jaguaripe","Jandaíra","Jequié","Jeremoabo","Jiquiriçá","Jitaúna","João Dourado","Juazeiro","Jucuruçu","Jussara","Jussari","Jussiape","Lafaiete Coutinho","Lagoa Real","Laje","Lajedão","Lajedinho","Lajedo Do Tabocal","Lamarão","Lapão","Lauro De Freitas","Lençóis","Licínio De Almeida","Livramento De Nossa Senhora","Luís Eduardo Magalhães","Macajuba","Macarani","Macaúbas","Macururé","Madre De Deus","Maetinga","Maiquinique","Mairi","Malhada","Malhada De Pedras","Manoel Vitorino","Mansidão","Maracás","Maragogipe","Maraú","Marcionílio Souza","Mascote","Mata De São João","Matina","Medeiros Neto","Miguel Calmon","Milagres","Mirangaba","Mirante","Monte Santo","Morpará","Morro Do Chapéu","Mortugaba","Mucugê","Mucuri","Mulungu Do Morro","Mundo Novo","Muniz Ferreira","Muquém De São Francisco","Muritiba","Mutuípe","Nazaré","Nilo Peçanha","Nordestina","Nova Canaã","Nova Fátima","Nova Ibiá","Nova Itarana","Nova Redenção","Nova Soure","Nova Viçosa","Novo Horizonte","Novo Triunfo","Olindina","Oliveira Dos Brejinhos","Ouriçangas","Ourolândia","Palmas De Monte Alto","Palmeiras","Paramirim","Paratinga","Paripiranga","Pau Brasil","Paulo Afonso","Pé De Serra","Pedrão","Pedro Alexandre","Piatã","Pilão Arcado","Pindaí","Pindobaçu","Pintadas","Piraí Do Norte","Piripá","Piritiba","Planaltino","Planalto","Poções","Pojuca","Ponto Novo","Porto Seguro","Potiraguá","Prado","Presidente Dutra","Presidente Jânio Quadros","Presidente Tancredo Neves","Queimadas","Quijingue","Quixabeira","Rafael Jambeiro","Remanso","Retirolândia","Riachão Das Neves","Riachão Do Jacuípe","Riacho De Santana","Ribeira Do Amparo","Ribeira Do Pombal","Ribeirão Do Largo","Rio De Contas","Rio Do Antônio","Rio Do Pires","Rio Real","Rodelas","Ruy Barbosa","Salinas das Margaridas","Salvador","Santa Bárbara","Santa Brígida","Santa Cruz Cabrália","Santa Cruz Da Vitória","Santa Inês","Santa Luzia","Santa Maria Da Vitória","Santa Rita De Cássia","Santa Teresinha","Santaluz","Santana","Santanópolis","Santo Amaro","Santo Antônio De Jesus","Santo Estêvão","São Desidério","São Domingos","São Felipe","São Félix","São Félix Do Coribe","São Francisco Do Conde","São Gabriel","São Gonçalo Dos Campos","São José Da Vitória","São José Do Jacuípe","São Miguel Das Matas","São Sebastião do Passé","Sapeaçu","Sátiro Dias","Saubara","Saúde","Seabra","Sebastião Laranjeiras","Senhor Do Bonfim","Sento Sé","Serra Do Ramalho","Serra Dourada","Serra Preta","Serrinha","Serrolândia","Simões Filho","Sítio Do Mato","Sítio Do Quinto","Sobradinho","Souto Soares","Tabocas Do Brejo Velho","Tanhaçu","Tanque Novo","Tanquinho","Taperoá","Tapiramutá","Teixeira De Freitas","Teodoro Sampaio","Teofilândia","Teolândia","Terra Nova","Tremedal","Tucano","Uauá","Ubaíra","Ubaitaba","Ubatã","Uibaí","Umburanas","Una","Urandi","Uruçuca","Utinga","Valença","Valente","Várzea Da Roça","Várzea Do Poço","Várzea Nova","Varzedo","Vera Cruz","Vereda","Vitória Da Conquista","Wagner","Wanderley","Wenceslau Guimarães","Xique-Xique"
-        ];
+        // ==========================================
+        // CREDENCIAIS SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co'; 
+        const SUPABASE_KEY = 'sb_publishable_4yUC6E4x5iMoh0vWj7CGmQ_BOIcA2_5';
+        // ==========================================
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let loadedData = {}; 
 
-        let localDB = {};
-        let currentData = {};
-        let currentCityId = '';
+        async function init() {
+            const overlay = document.getElementById('loading-overlay');
+            const txt = document.getElementById('loading-text');
 
-        // --- NAVIGATION LOGIC ---
+            try {
+                txt.innerText = "Carregando dados atualizados...";
+                
+                // Fetch Relacional (JOIN)
+                const { data: dbData, error } = await supabase
+                    .from('municipios')
+                    .select(`
+                        *,
+                        cursos (
+                            *,
+                            alunos (*)
+                        )
+                    `);
+
+                if(error) throw error;
+
+                loadedData = {};
+                dbData.forEach(m => {
+                    loadedData[m.id] = m;
+                    loadedData[m.id].courses = m.cursos || [];
+                    
+                    let uniqueGrads = new Set();
+                    let totalCerts = 0;
+                    
+                    loadedData[m.id].courses.forEach(c => {
+                        // Normalização
+                        c.cursoNome = c.nome;
+                        c.cursoData = c.data_realizacao;
+                        c.students = c.alunos || [];
+                        c.concluintes = 0;
+                        
+                        c.students.forEach(s => {
+                            if((s.status||'').toUpperCase().includes('CONCLU')) {
+                                c.concluintes++;
+                                totalCerts++;
+                                uniqueGrads.add(s.cpf || s.nome);
+                            }
+                        });
+                    });
+
+                    loadedData[m.id].uniqueGraduates = uniqueGrads.size;
+                    loadedData[m.id].totalCertifications = totalCerts;
+                });
+                
+                populateDatalists(dbData);
+                loadCityList(dbData);
+
+            } catch(e) {
+                console.error(e);
+                alert("Erro ao conectar ao Banco de Dados. Verifique a chave ou a conexão.\nDetalhe: " + e.message);
+            } finally {
+                setTimeout(() => { 
+                    overlay.style.opacity = '0'; 
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                }, 500);
+            }
+        }
+
+        // --- NAVEGAÇÃO ---
         function navigateTo(pageId) {
-            // Hide all pages
             document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-            // Show target
             document.getElementById(pageId).classList.add('active');
-
-            // Logic to refresh data based on view
             if(pageId === 'page-cursos-view') renderGlobalCourses();
             if(pageId === 'page-alunos-view') renderGlobalStudents();
             if(pageId === 'page-controle-cidades') renderControlCities();
             if(pageId === 'page-controle-alunos') renderControlStudents();
         }
 
-        function switchCity(id) {
-            loadCity(id);
-            navigateTo('page-municipios');
-        }
-
-        // --- CORE FUNCTIONS (Load/Save) ---
-        async function init() {
-            const overlay = document.getElementById('loading-overlay');
-            const stored = localStorage.getItem(STORAGE_KEY);
-
-            if(stored) {
-                localDB = JSON.parse(stored);
-                console.log("Dados carregados do LocalStorage");
-            } else {
-                console.log("Iniciando banco vazio");
-                ALL_CITIES.forEach(city => {
-                    const id = generateId(city);
-                    localDB[id] = { 
-                        municipio: city, territorio: '---', populacao: 0, efetivo: 0,
-                        possui: false, armada: false,
-                        prefeito: '-', emailPref: '-', telPref: '-', emailGuarda: '-', telGuarda: '-',
-                        courses: [], uniqueGraduates: 0, totalCertifications: 0
-                    };
-                });
-                saveToStorage();
-            }
-
-            // Populate Datalists for Forms
+        function populateDatalists(data) {
             const dl = document.getElementById('city-datalist');
             const dl2 = document.getElementById('city-datalist-st');
-            ALL_CITIES.forEach(c => {
+            dl.innerHTML = ''; dl2.innerHTML = '';
+            
+            data.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
                 const opt = document.createElement('option');
-                opt.value = c;
+                opt.value = m.nome;
                 dl.appendChild(opt);
                 dl2.appendChild(opt.cloneNode(true));
             });
-
-            loadCityList();
         }
 
-        function saveToStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(localDB));
-        }
-
-        function resetStorage() {
-            if(confirm("ATENÇÃO: Isso apagará TODOS os dados.\nDeseja continuar?")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        }
-
-        // --- VIEW: MUNICIPIOS ---
-        function loadCityList() {
+        function loadCityList(data) {
             const select = document.getElementById('city-selector');
-            const overlay = document.getElementById('loading-overlay');
-            
-            select.innerHTML = '<option value="" disabled selected>Selecione um município...</option>';
-            ALL_CITIES.forEach(cityName => {
-                const id = generateId(cityName);
+            select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+            data.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
                 const opt = document.createElement('option');
-                opt.value = id;
-                opt.innerText = cityName;
+                opt.value = m.id;
+                opt.innerText = m.nome;
                 select.appendChild(opt);
             });
-
-            const defaultId = generateId("Abaíra");
-            select.value = defaultId;
-            loadCity(defaultId);
-            
-            setTimeout(() => { 
-                overlay.style.opacity = '0'; 
-                setTimeout(() => overlay.style.display = 'none', 500);
-            }, 500);
+            if(data.length > 0) {
+                select.value = data[0].id;
+                loadCity(data[0].id);
+            }
         }
 
-        function loadCity(cityId) {
-            if(!cityId) return;
-            currentCityId = cityId;
+        function loadCity(id) {
+            if(!id) return;
+            const data = loadedData[id];
             
-            const dataToRender = localDB[cityId] || { 
-                municipio: "Desconhecido", courses: [], uniqueGraduates: 0, totalCertifications: 0 
-            };
-            currentData = dataToRender;
-            renderData(dataToRender);
-        }
-
-        function renderData(data) {
-            document.getElementById('view-municipio').innerText = data.municipio || '---';
-            document.getElementById('view-territorio').innerText = data.territorio || '---';
-            document.getElementById('view-populacao').innerText = Number(data.populacao || 0).toLocaleString('pt-BR');
-            document.getElementById('view-efetivo').innerText = data.efetivo || '0';
+            document.getElementById('view-municipio').innerText = data.nome;
+            document.getElementById('view-territorio').innerText = data.territorio || '-';
+            document.getElementById('view-populacao').innerText = (data.populacao||0).toLocaleString('pt-BR');
+            document.getElementById('view-efetivo').innerText = data.efetivo || 0;
             
+            // Dados de Contato Atualizados
             document.getElementById('view-prefeito').innerText = data.prefeito || '-';
-            document.getElementById('view-email-pref').innerText = data.emailPref || '-';
-            // document.getElementById('view-tel-pref').innerText = data.telPref || '-';
-            document.getElementById('view-email-gm').innerText = data.emailGuarda || '-';
-            // document.getElementById('view-tel-gm').innerText = data.telGuarda || '-';
+            document.getElementById('view-email-pref').innerText = data.email_pref || '-';
+            document.getElementById('view-tel-pref').innerText = data.telefone_pref || '-';
 
-            const badgePossui = document.getElementById('badge-possui');
-            if(data.possui) {
-                badgePossui.className = "status-badge bg-green-100 text-green-700 border border-green-200";
-                badgePossui.innerHTML = 'SIM <i class="fas fa-check ml-1"></i>';
-            } else {
-                badgePossui.className = "status-badge bg-gray-100 text-gray-500 border border-gray-200";
-                badgePossui.innerHTML = 'NÃO <i class="fas fa-times ml-1"></i>';
-            }
+            document.getElementById('view-email-gm').innerText = data.email_gm || '-';
+            document.getElementById('view-tel-gm').innerText = data.telefone_gm || '-';
 
-            const badgeArmada = document.getElementById('badge-armada');
-            if(data.armada) {
-                badgeArmada.className = "status-badge bg-green-100 text-green-700 border border-green-200";
-                badgeArmada.innerHTML = 'SIM <i class="fas fa-check ml-1"></i>';
-            } else {
-                badgeArmada.className = "status-badge bg-gray-100 text-gray-500 border border-gray-200";
-                badgeArmada.innerHTML = 'NÃO <i class="fas fa-times ml-1"></i>';
-            }
+            setBooleanBadge('badge-possui', data.possui_guarda);
+            setBooleanBadge('badge-armada', data.guarda_armada);
 
-            const uniqueGrads = data.uniqueGraduates || 0;
-            const totalCerts = data.totalCertifications || 0;
-            const effective = parseInt(data.efetivo) || 0;
-            const coverage = effective > 0 ? ((uniqueGrads / effective) * 100).toFixed(1) : 0;
+            const coverage = data.efetivo > 0 ? ((data.uniqueGraduates / data.efetivo) * 100).toFixed(1) : 0;
+            document.getElementById('view-total-certs').innerText = data.totalCertifications;
+            document.getElementById('view-unique-grads').innerText = data.uniqueGraduates;
+            document.getElementById('view-coverage-pct').innerText = coverage + '%';
 
-            document.getElementById('view-total-certs').innerText = totalCerts;
-            document.getElementById('view-unique-grads').innerText = uniqueGrads;
-            document.getElementById('view-coverage-pct').innerText = `${coverage}%`;
-
-            const container = document.getElementById('courses-container');
-            container.innerHTML = ''; 
-
-            let coursesToRender = data.courses || [];
-            
-            if (coursesToRender.length === 0) {
-                container.innerHTML = `<div class="p-6 bg-gray-50 rounded border border-gray-200 text-center text-gray-400 text-sm">Nenhum curso registrado.</div>`;
-            } else {
-                coursesToRender.forEach(course => {
-                    const sit = (course.situacao || '').toLowerCase();
-                    let statusColorClass = "text-gray-500";
-                    let dotClass = "bg-gray-300";
-                    
-                    if(sit.includes('atendido') && !sit.includes('não')) {
-                        statusColorClass = "text-green-600";
-                        dotClass = "bg-green-500";
-                    } else if (sit.includes('andamento')) {
-                        statusColorClass = "text-yellow-600";
-                        dotClass = "bg-yellow-500";
-                    } else if (sit.includes('não')) {
-                        statusColorClass = "text-red-500";
-                        dotClass = "bg-red-500 animate-pulse";
-                    }
-
-                    // Render Student List
-                    let studentsHtml = '';
-                    if (course.students && course.students.length > 0) {
-                        studentsHtml = `
-                            <div class="mt-4 border-t border-gray-200 pt-3">
-                                <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-2">
-                                    <i class="fas fa-users"></i> Lista de Alunos (${course.students.length})
-                                </h4>
-                                <div class="table-container border border-gray-200 rounded max-h-40">
-                                    <table class="w-full text-xs text-left text-gray-600">
-                                        <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
-                                            <tr><th class="px-2 py-1">Nome</th><th class="px-2 py-1">Status</th></tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-100">
-                                            ${course.students.map(s => `
-                                                <tr class="bg-white">
-                                                    <td class="px-2 py-1">${s.nome}</td>
-                                                    <td class="px-2 py-1 text-[10px]">${s.status}</td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    const card = `
-                    <details class="group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50">
-                            <div class="flex items-center gap-3">
-                                <span class="w-2 h-2 rounded-full ${dotClass}"></span>
-                                <h2 class="text-sm font-bold text-gray-800">${course.cursoNome || 'Sem Nome'}</h2>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <span class="text-xs font-bold uppercase ${statusColorClass}">${course.situacao || '---'}</span>
-                                <i class="fas fa-chevron-down text-gray-400 text-xs chevron group-open:rotate-180 transition-transform"></i>
-                            </div>
-                        </summary>
-                        
-                        <div class="p-4 border-t border-gray-100 bg-slate-50/50">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                <div><label class="block font-bold text-gray-400 uppercase mb-1">Referência/Data</label><p class="text-gray-700 font-medium">${course.cursoData || '-'}</p></div>
-                                <div><label class="block font-bold text-gray-400 uppercase mb-1">Protocolo SEI</label><p class="font-mono text-gray-600 bg-white border border-gray-200 rounded px-2 py-1 inline-block">${course.protocolo || '-'}</p></div>
-                                <div class="sm:col-span-2"><label class="block font-bold text-gray-400 uppercase mb-1">Observações</label><p class="text-gray-600 leading-relaxed bg-white p-2 rounded border border-gray-100">${course.obs || 'Sem observações.'}</p></div>
-                            </div>
-                            ${studentsHtml}
-                        </div>
-                    </details>`;
-                    container.insertAdjacentHTML('beforeend', card);
-                });
-            }
+            renderCityCourses(data.courses);
         }
 
-        // --- VIEW: GLOBAL COURSES ---
-        function renderGlobalCourses() {
-            const container = document.getElementById('global-courses-list');
+        function setBooleanBadge(id, val) {
+            const el = document.getElementById(id);
+            el.innerHTML = val ? 'SIM <i class="fas fa-check ml-1"></i>' : 'NÃO <i class="fas fa-times ml-1"></i>';
+            el.className = val ? "status-badge bg-green-100 text-green-700" : "status-badge bg-gray-100 text-gray-500";
+        }
+
+        function renderCityCourses(courses) {
+            const container = document.getElementById('courses-container');
             container.innerHTML = '';
-            
-            // 1. Group data: { CourseName: [ {city, data, studentsCount}, ... ] }
-            const coursesMap = {};
-
-            Object.keys(localDB).forEach(key => {
-                const cityData = localDB[key];
-                if(cityData.courses) {
-                    cityData.courses.forEach(c => {
-                        const cName = c.cursoNome || 'Sem Nome';
-                        if(!coursesMap[cName]) coursesMap[cName] = [];
-                        
-                        coursesMap[cName].push({
-                            cityId: key,
-                            cityName: cityData.municipio,
-                            status: c.situacao,
-                            count: c.students ? c.students.length : 0
-                        });
-                    });
-                }
-            });
-
-            // 2. Render Accordions
-            if(Object.keys(coursesMap).length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center">Nenhum curso encontrado.</p>';
+            if(!courses || courses.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">Sem histórico.</div>';
                 return;
             }
 
-            Object.keys(coursesMap).sort().forEach(cName => {
-                const citiesList = coursesMap[cName];
-                const totalCities = citiesList.length;
-                const totalStudents = citiesList.reduce((acc, item) => acc + item.count, 0);
+            courses.forEach(c => {
+                const color = (c.situacao||'').includes('Atendido') ? 'text-green-600' : 'text-yellow-600';
+                
+                let studentsHtml = '';
+                if(c.students && c.students.length > 0) {
+                    studentsHtml = `<div class="mt-2 pt-2 border-t"><table class="w-full text-xs">
+                        ${c.students.map(s => `<tr><td class="py-1">${s.nome}</td><td class="text-right">${s.status}</td></tr>`).join('')}
+                    </table></div>`;
+                }
+                
+                // Exibe o campo Comunicação em vez de Protocolo
+                const comunicacao = c.comunicacao || '-';
 
-                const html = `
-                <details class="group bg-white rounded border border-gray-200 overflow-hidden">
-                    <summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-blue-50 transition-colors">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-blue-900 text-lg">${cName}</span>
-                            <span class="text-xs text-gray-500">${totalCities} Municípios Participantes | ${totalStudents} Alunos no total</span>
+                container.insertAdjacentHTML('beforeend', `
+                    <details class="bg-white rounded border border-gray-200 p-3 group">
+                        <summary class="flex justify-between text-sm font-bold cursor-pointer">
+                            <span>${c.nome}</span>
+                            <span class="${color} text-xs uppercase">${c.situacao} <i class="fas fa-chevron-down ml-1"></i></span>
+                        </summary>
+                        <div class="mt-2 text-xs text-gray-600 space-y-1">
+                            <div>Data: ${c.data_realizacao || '-'}</div>
+                            <div class="font-mono bg-gray-50 p-1 inline-block rounded">Comunicação: ${comunicacao}</div>
+                            ${c.obs ? `<div class="italic text-gray-500 mt-1">Obs: ${c.obs}</div>` : ''}
+                            ${studentsHtml}
                         </div>
-                        <i class="fas fa-chevron-down text-gray-400 chevron group-open:rotate-180"></i>
-                    </summary>
-                    <div class="p-4 bg-gray-50 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        ${citiesList.map(item => `
-                            <div onclick="switchCity('${item.cityId}')" class="bg-white p-3 rounded border border-gray-200 hover:shadow-md cursor-pointer transition-shadow flex justify-between items-center">
-                                <div>
-                                    <div class="font-bold text-sm text-gray-800">${item.cityName}</div>
-                                    <div class="text-[10px] text-gray-400 uppercase">${item.status}</div>
-                                </div>
-                                <div class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full" title="Alunos">
-                                    ${item.count}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </details>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
+                    </details>
+                `);
             });
         }
 
-        // --- VIEW: GLOBAL STUDENTS ---
-        let allStudentsCache = [];
-        
-        function renderGlobalStudents() {
-            const tbody = document.getElementById('global-students-table');
-            tbody.innerHTML = '';
-            allStudentsCache = [];
+        // --- IMPORTAÇÃO DE DADOS ---
+        async function processAndUploadFiles() {
+            if(!confirm("Esta ação vai APAGAR e REESCREVER todo o banco de dados com base nos CSVs. Confirma?")) return;
 
-            // Flatten Data
-            Object.keys(localDB).forEach(key => {
-                const city = localDB[key];
-                if(city.courses) {
-                    city.courses.forEach(c => {
-                        if(c.students) {
-                            c.students.forEach(s => {
-                                allStudentsCache.push({
-                                    nome: s.nome,
-                                    cpf: s.cpf,
-                                    municipio: city.municipio,
-                                    curso: c.cursoNome,
-                                    status: s.status
-                                });
+            const f1 = document.getElementById('file-municipios').files[0];
+            const f2 = document.getElementById('file-cidades').files[0];
+            const f3 = document.getElementById('file-alunos').files[0];
+            
+            if(!f1 || !f2 || !f3) return alert("Selecione os 3 arquivos.");
+            const loader = document.getElementById('loading-overlay');
+            loader.style.display = 'flex'; loader.style.opacity = '1';
+            document.getElementById('loading-text').innerText = "Processando importação...";
+
+            try {
+                // 1. Limpeza das tabelas
+                await supabase.from('alunos').delete().neq('id', 0);
+                await supabase.from('cursos').delete().neq('id', 0);
+                await supabase.from('municipios').delete().neq('id', 0);
+
+                const config = { delimiter: ";", header: true, skipEmptyLines: true, encoding: "ISO-8859-1" };
+                const [pMuni, pCid, pAlu] = await Promise.all([parseFile(f1, config), parseFile(f2, config), parseFile(f3, config)]);
+
+                // 2. Insert Municípios (com mapeamento de telefones)
+                const muniPayload = pMuni.map(r => {
+                    const nome = r['Municipio'] || r['Município'];
+                    if(!nome) return null;
+                    return {
+                        nome: nome,
+                        territorio: r['REGIÃO'] || '-',
+                        populacao: cleanNumber(r['População']),
+                        efetivo: cleanNumber(r['Efetivo']),
+                        possui_guarda: (r['Guarda oficial']||'').includes('SIM'),
+                        guarda_armada: (r['Guarda Armada']||'').includes('SIM'),
+                        prefeito: r['Prefeito'],
+                        email_pref: r['Email da Prefeitura'],
+                        telefone_pref: r['Telefone da Prefeitura'], // Mapeamento
+                        email_gm: r['E-mail da Guarda'],
+                        telefone_gm: r['Telefone da Guarda'] // Mapeamento
+                    };
+                }).filter(x => x);
+
+                const { data: insertedMunis, error: errM } = await supabase.from('municipios').insert(muniPayload).select();
+                if(errM) throw errM;
+                
+                const muniMap = {}; 
+                insertedMunis.forEach(m => muniMap[m.nome] = m.id);
+
+                // 3. Insert Cursos (com mapeamento de comunicacao)
+                const cursoTempMap = new Map();
+                pCid.forEach(r => {
+                    const mId = muniMap[r['MUNICIPIO']];
+                    if(mId) {
+                        const key = `${mId}-${r['CURSO']}`;
+                        if(!cursoTempMap.has(key)) {
+                            cursoTempMap.set(key, {
+                                municipio_id: mId,
+                                nome: r['CURSO'],
+                                data_realizacao: r['ANO'],
+                                comunicacao: r['CANAL DE COMUNICAÇÃO'], // Mapeamento correto
+                                situacao: r['STATUS'],
+                                obs: r['OBSERVAÇÕES']
                             });
                         }
-                    });
-                }
-            });
+                    }
+                });
 
-            // Initial Render
+                const { data: insertedCursos, error: errC } = await supabase.from('cursos').insert(Array.from(cursoTempMap.values())).select();
+                if(errC) throw errC;
+
+                const cursoLookup = {};
+                insertedCursos.forEach(c => {
+                    cursoLookup[`${c.municipio_id}-${c.nome}`] = c.id;
+                });
+
+                // 4. Insert Alunos
+                const alunosPayload = [];
+                pAlu.forEach(r => {
+                    const mId = muniMap[r['MUNICIPIO']];
+                    if(mId) {
+                        const cId = cursoLookup[`${mId}-${r['CURSO']}`];
+                        if(cId) {
+                            alunosPayload.push({
+                                curso_id: cId,
+                                nome: r['ALUNO'],
+                                cpf: r['CPF'],
+                                status: r['STATUS']
+                            });
+                        }
+                    }
+                });
+
+                // Batch Insert (Lotes de 1000)
+                for (let i = 0; i < alunosPayload.length; i += 1000) {
+                    const chunk = alunosPayload.slice(i, i + 1000);
+                    const { error: errA } = await supabase.from('alunos').insert(chunk);
+                    if(errA) throw errA;
+                }
+
+                alert("Importação Concluída com Sucesso!");
+                location.reload();
+
+            } catch(e) {
+                console.error(e);
+                alert("Erro Fatal: " + e.message);
+                loader.style.display = 'none';
+            }
+        }
+
+        // --- CRUD OPERATIONS ---
+        async function addCityControl() {
+            const muniNome = document.getElementById('cc-municipio').value;
+            const cursoNome = document.getElementById('cc-curso').value;
+            const ano = document.getElementById('cc-ano').value;
+            
+            const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
+            if(!muniEntry) return alert("Município inválido.");
+
+            const { error } = await supabase.from('cursos').insert({
+                municipio_id: muniEntry.id,
+                nome: cursoNome,
+                data_realizacao: ano,
+                situacao: 'Em Andamento',
+                comunicacao: 'Inserção Manual'
+            });
+            
+            if(!error) { alert("Salvo!"); init(); } else alert("Erro ao salvar.");
+        }
+
+        async function addStudentControl() {
+            const muniNome = document.getElementById('ca-municipio').value;
+            const cursoNome = document.getElementById('ca-curso').value;
+            const nome = document.getElementById('ca-nome').value;
+            const cpf = document.getElementById('ca-cpf').value;
+
+            const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
+            if(!muniEntry) return alert("Município inválido");
+            const cursoEntry = muniEntry.courses.find(c => c.nome === cursoNome);
+            if(!cursoEntry) return alert("Curso não existe.");
+
+            const { error } = await supabase.from('alunos').insert({
+                curso_id: cursoEntry.id, nome, cpf, status: 'Matriculado'
+            });
+            if(!error) { alert("Aluno matriculado!"); init(); } else alert("Erro ao salvar.");
+        }
+
+        async function deleteCourse(id) {
+            if(confirm("Apagar curso e todos alunos?")) {
+                await supabase.from('cursos').delete().eq('id', id);
+                init();
+            }
+        }
+
+        async function deleteStudent(id) {
+            if(confirm("Apagar aluno?")) {
+                await supabase.from('alunos').delete().eq('id', id);
+                init();
+            }
+        }
+
+        // --- Render Functions (Controls) ---
+        function renderControlCities() {
+            const tbody = document.getElementById('control-cities-table');
+            tbody.innerHTML = '';
+            Object.values(loadedData).forEach(m => {
+                if(m.courses) m.courses.forEach(c => {
+                    tbody.insertAdjacentHTML('beforeend', `
+                        <tr class="bg-white border-b">
+                            <td class="px-4 py-2 font-bold">${m.nome}</td>
+                            <td class="px-4 py-2 text-xs">${c.nome}</td>
+                            <td class="px-4 py-2 text-xs">${c.data_realizacao}</td>
+                            <td class="px-4 py-2 text-xs">${c.situacao}</td>
+                            <td class="px-4 py-2 text-center"><button onclick="deleteCourse(${c.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+
+        function renderControlStudents() {
+            const filter = document.getElementById('control-student-search').value.toLowerCase();
+            const tbody = document.getElementById('control-students-table');
+            tbody.innerHTML = '';
+            let count = 0;
+            Object.values(loadedData).forEach(m => {
+                if(m.courses) m.courses.forEach(c => {
+                    if(c.students) c.students.forEach(s => {
+                        if(count > 50 && filter === '') return;
+                        if(s.nome.toLowerCase().includes(filter) || m.nome.toLowerCase().includes(filter)) {
+                            tbody.insertAdjacentHTML('beforeend', `
+                                <tr class="bg-white border-b">
+                                    <td class="px-4 py-2 text-xs">${m.nome}</td>
+                                    <td class="px-4 py-2 text-xs">${c.nome}</td>
+                                    <td class="px-4 py-2 font-bold">${s.nome}</td>
+                                    <td class="px-4 py-2 text-xs font-mono">${s.cpf}</td>
+                                    <td class="px-4 py-2 text-xs">${s.status}</td>
+                                    <td class="px-4 py-2 text-center"><button onclick="deleteStudent(${s.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td>
+                                </tr>
+                            `);
+                            count++;
+                        }
+                    });
+                });
+            });
+        }
+        
+        function renderGlobalCourses() {
+            const container = document.getElementById('global-courses-list');
+            container.innerHTML = '';
+            const map = {};
+            Object.values(loadedData).forEach(m => {
+                if(m.courses) m.courses.forEach(c => {
+                    if(!map[c.nome]) map[c.nome] = [];
+                    map[c.nome].push({ cityName: m.nome, cityId: m.id, count: c.students.length });
+                });
+            });
+            Object.keys(map).sort().forEach(cName => {
+                const list = map[cName];
+                container.insertAdjacentHTML('beforeend', `
+                    <details class="group bg-white rounded border border-gray-200">
+                        <summary class="flex justify-between p-4 cursor-pointer hover:bg-blue-50">
+                            <div><span class="font-bold text-blue-900">${cName}</span><div class="text-xs text-gray-500">${list.length} Cidades</div></div>
+                        </summary>
+                        <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-2">${list.map(i=>`<div onclick="loadCity(${i.cityId}); navigateTo('page-municipios')" class="bg-gray-50 p-2 border rounded cursor-pointer hover:bg-white">${i.cityName} (${i.count})</div>`).join('')}</div>
+                    </details>`);
+            });
+        }
+
+        function renderGlobalStudents() {
             filterStudents();
         }
 
         function filterStudents() {
             const term = document.getElementById('student-search').value.toLowerCase();
             const tbody = document.getElementById('global-students-table');
-            const countLabel = document.getElementById('student-count');
-            
             tbody.innerHTML = '';
             let count = 0;
-            const limit = 100; // Lazy rendering limit for performance
-
-            for(let s of allStudentsCache) {
-                if(count >= limit && term === '') break; // Only limit if no search
-
-                if(s.nome.toLowerCase().includes(term) || (s.cpf && s.cpf.includes(term))) {
-                    const row = `
-                        <tr class="bg-white hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-3 font-medium text-gray-900">${s.nome}</td>
-                            <td class="px-4 py-3 font-mono text-gray-500">${s.cpf || '-'}</td>
-                            <td class="px-4 py-3 text-blue-600">${s.municipio}</td>
-                            <td class="px-4 py-3 text-gray-500 text-xs">${s.curso}</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-1 text-xs rounded font-bold ${s.status.toUpperCase().includes('CONCLU') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
-                                    ${s.status}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.insertAdjacentHTML('beforeend', row);
-                    count++;
-                }
-            }
-            countLabel.innerText = `Mostrando ${count} de ${allStudentsCache.length} alunos`;
-        }
-
-        // --- CONTROLE: CIDADES ---
-        function renderControlCities() {
-            const tbody = document.getElementById('control-cities-table');
-            tbody.innerHTML = '';
-
-            Object.keys(localDB).forEach(key => {
-                const city = localDB[key];
-                if(city.courses) {
-                    city.courses.forEach((c, idx) => {
-                        const row = `
-                            <tr class="bg-white border-b hover:bg-gray-50">
-                                <td class="px-4 py-2 font-bold">${city.municipio}</td>
-                                <td class="px-4 py-2">${c.cursoNome}</td>
-                                <td class="px-4 py-2 text-xs">${c.cursoData}</td>
-                                <td class="px-4 py-2 text-xs">${c.situacao}</td>
-                                <td class="px-4 py-2 text-center">
-                                    <button onclick="deleteCourse('${key}', ${idx})" class="text-red-500 hover:text-red-700 text-xs font-bold uppercase">
-                                        <i class="fas fa-trash"></i> Apagar
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                        tbody.insertAdjacentHTML('beforeend', row);
-                    });
-                }
-            });
-        }
-
-        function addCityControl() {
-            const muniName = document.getElementById('cc-municipio').value;
-            const cursoName = document.getElementById('cc-curso').value;
-            const ano = document.getElementById('cc-ano').value;
-
-            if(!muniName || !cursoName) return alert("Preencha Município e Curso");
-
-            const id = generateId(muniName);
-            if(!localDB[id]) return alert("Município não encontrado no banco base.");
-
-            if(!localDB[id].courses) localDB[id].courses = [];
-            
-            localDB[id].courses.push({
-                cursoNome: cursoName,
-                cursoData: ano,
-                situacao: 'Em Andamento',
-                students: [],
-                concluintes: 0
-            });
-
-            saveToStorage();
-            renderControlCities();
-            alert("Registro adicionado!");
-        }
-
-        function deleteCourse(cityId, courseIdx) {
-            if(confirm("Tem certeza que deseja apagar este registro de curso e todos os alunos vinculados?")) {
-                localDB[cityId].courses.splice(courseIdx, 1);
-                saveToStorage();
-                renderControlCities();
-            }
-        }
-
-        // --- CONTROLE: ALUNOS ---
-        function renderControlStudents() {
-            const filter = document.getElementById('control-student-search').value.toLowerCase();
-            const tbody = document.getElementById('control-students-table');
-            tbody.innerHTML = '';
-            let count = 0;
-
-            Object.keys(localDB).forEach(key => {
-                const city = localDB[key];
-                if(city.courses) {
-                    city.courses.forEach((c, cIdx) => {
-                        if(c.students) {
-                            c.students.forEach((s, sIdx) => {
-                                if(count > 100 && filter === '') return; // Limit
-
-                                if(s.nome.toLowerCase().includes(filter) || city.municipio.toLowerCase().includes(filter)) {
-                                    const row = `
-                                        <tr class="bg-white border-b hover:bg-gray-50">
-                                            <td class="px-4 py-2 text-xs">${city.municipio}</td>
-                                            <td class="px-4 py-2 text-xs">${c.cursoNome}</td>
-                                            <td class="px-4 py-2 font-bold text-gray-800">${s.nome}</td>
-                                            <td class="px-4 py-2 text-xs font-mono">${s.cpf}</td>
-                                            <td class="px-4 py-2 text-xs">${s.status}</td>
-                                            <td class="px-4 py-2 text-center">
-                                                <button onclick="deleteStudent('${key}', ${cIdx}, ${sIdx})" class="text-red-500 hover:text-red-700">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                    tbody.insertAdjacentHTML('beforeend', row);
-                                    count++;
-                                }
-                            });
+            // Varredura para busca
+            for(let id in loadedData) {
+                const m = loadedData[id];
+                if(m.courses) m.courses.forEach(c => {
+                    if(c.students) c.students.forEach(s => {
+                        if(count > 50 && term === '') return;
+                        if(term === '' || s.nome.toLowerCase().includes(term) || (s.cpf||'').includes(term)) {
+                            tbody.insertAdjacentHTML('beforeend', `
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-4 py-2 font-bold">${s.nome}</td>
+                                    <td class="px-4 py-2 font-mono text-xs">${s.cpf||'-'}</td>
+                                    <td class="px-4 py-2 text-xs text-blue-600">${m.nome}</td>
+                                    <td class="px-4 py-2 text-xs">${c.nome}</td>
+                                    <td class="px-4 py-2 text-xs">${s.status}</td>
+                                </tr>`);
+                            count++;
                         }
                     });
-                }
-            });
-        }
-
-        function addStudentControl() {
-            const muniName = document.getElementById('ca-municipio').value;
-            const cursoName = document.getElementById('ca-curso').value;
-            const alunoNome = document.getElementById('ca-nome').value;
-            const cpf = document.getElementById('ca-cpf').value;
-
-            const id = generateId(muniName);
-            if(!localDB[id]) return alert("Município inválido.");
-            
-            const course = localDB[id].courses.find(c => c.cursoNome === cursoName);
-            if(!course) return alert("Curso não encontrado neste município. Adicione o curso primeiro em 'Controle Cidades'.");
-
-            if(!course.students) course.students = [];
-            course.students.push({
-                nome: alunoNome,
-                cpf: cpf || '-',
-                status: 'Matriculado'
-            });
-
-            saveToStorage();
-            renderControlStudents();
-            alert("Aluno matriculado!");
-        }
-
-        function deleteStudent(cityId, cIdx, sIdx) {
-            if(confirm("Remover este aluno?")) {
-                localDB[cityId].courses[cIdx].students.splice(sIdx, 1);
-                saveToStorage();
-                renderControlStudents();
+                });
             }
+            document.getElementById('student-count').innerText = `Exibindo ${count} resultados`;
         }
-
-        // --- IMPORT PROCESS (Original Logic Adapted) ---
-        window.processFiles = async function() {
-            const fMunicipios = document.getElementById('file-municipios').files[0];
-            const fCidades = document.getElementById('file-cidades').files[0];
-            const fAlunos = document.getElementById('file-alunos').files[0];
-
-            if (!fMunicipios || !fCidades || !fAlunos) {
-                alert("Selecione os 3 arquivos.");
-                return;
-            }
-
-            try {
-                const config = { delimiter: ";", header: true, skipEmptyLines: true, encoding: "ISO-8859-1" }; 
-                const pMunicipios = await parseFile(fMunicipios, config);
-                const pCidades = await parseFile(fCidades, config);
-                const pAlunos = await parseFile(fAlunos, config);
-
-                const dataMap = {}; 
-                const studentSets = {};
-
-                // 1. Process Municipios
-                pMunicipios.forEach(row => {
-                    const name = row['Municipio'] || row['Município'];
-                    if(!name) return;
-                    const key = generateId(name);
-                    dataMap[key] = {
-                        municipio: name,
-                        territorio: row['REGIÃO'] || row['REGIAO'] || row['Território'] || '---',
-                        populacao: parseInt(cleanNumber(row['População'] || row['Populacao'])) || 0,
-                        efetivo: parseInt(cleanNumber(row['Efetivo'])) || 0,
-                        possui: (row['Guarda oficial'] || '').toUpperCase().includes('SIM'),
-                        armada: (row['Guarda Armada'] || '').toUpperCase().includes('SIM'),
-                        prefeito: row['Prefeito'] || '-',
-                        emailPref: row['Email da Prefeitura'] || '-',
-                        emailGuarda: row['E-mail da Guarda'] || '-',
-                        courses: [] 
-                    };
-                });
-
-                // 2. Process Courses
-                pCidades.forEach(row => {
-                    const name = row['MUNICIPIO'];
-                    if(!name) return;
-                    const key = generateId(name);
-                    
-                    if(dataMap[key]) {
-                        const curso = row['CURSO'] || '---';
-                        const existing = dataMap[key].courses.find(c => c.cursoNome === curso);
-                        const courseData = {
-                            cursoNome: curso,
-                            cursoData: row['ANO'] || '---',
-                            protocolo: row['CANAL DE COMUNICAÇÃO'] || '-',
-                            situacao: row['STATUS'] || 'Não Atendido',
-                            obs: row['OBSERVAÇÕES'] || '',
-                            concluintes: 0,
-                            students: []
-                        };
-                        if(!existing) dataMap[key].courses.push(courseData);
-                    }
-                });
-
-                // 3. Process Students
-                pAlunos.forEach(row => {
-                    const name = row['MUNICIPIO'];
-                    const curso = row['CURSO'];
-                    const alunoNome = row['ALUNO'];
-                    
-                    if(name && curso && alunoNome) {
-                        const key = generateId(name);
-                        if(dataMap[key]) {
-                            const targetCourse = dataMap[key].courses.find(c => c.cursoNome === curso);
-                            if(targetCourse) {
-                                targetCourse.students.push({
-                                    nome: alunoNome,
-                                    cpf: row['CPF'] || '-',
-                                    status: row['STATUS'] || '-'
-                                });
-
-                                if((row['STATUS'] || '').toUpperCase().includes('CONCLU')) {
-                                    targetCourse.concluintes++;
-                                    if (!studentSets[key]) studentSets[key] = new Set();
-                                    studentSets[key].add(row['CPF'] || alunoNome);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Finalize
-                Object.keys(dataMap).forEach(key => {
-                    dataMap[key].uniqueGraduates = studentSets[key] ? studentSets[key].size : 0;
-                    dataMap[key].totalCertifications = dataMap[key].courses.reduce((sum, c) => sum + (c.concluintes || 0), 0);
-                    localDB[key] = dataMap[key];
-                });
-
-                saveToStorage();
-                alert("Importação concluída!");
-                location.reload();
-
-            } catch (err) {
-                console.error(err);
-                alert("Erro ao processar: " + err.message);
-            }
-        };
-
-        // --- UTILS ---
-        function parseFile(file, config) {
-            return new Promise((resolve, reject) => {
-                Papa.parse(file, {
-                    ...config,
-                    complete: (results) => resolve(results.data),
-                    error: (err) => reject(err)
-                });
-            });
-        }
-        function normalizeKey(str) { return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
-        function generateId(str) { return normalizeKey(str).replace(/[^a-z0-9]/g, "-"); }
-        function cleanNumber(val) { if(!val) return 0; return String(val).replace(/\./g, '').replace(/,/g, ''); }
-        function toggleModal(id) {
-            const modal = document.getElementById(id);
-            const body = document.body;
-            if (modal.classList.contains('opacity-0')) {
-                modal.classList.remove('opacity-0', 'pointer-events-none');
-                body.classList.add('modal-active');
-            } else {
-                modal.classList.add('opacity-0', 'pointer-events-none');
-                body.classList.remove('modal-active');
-            }
-        }
+        
+        // Utils
+        function parseFile(f, c) { return new Promise((res, rej) => Papa.parse(f, { ...c, complete: r => res(r.data), error: rej })); }
+        function cleanNumber(v) { return parseInt(String(v||0).replace(/\./g,'').replace(/,/g,'')) || 0; }
+        function toggleModal(id) { const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); }
 
         init();
     </script>
