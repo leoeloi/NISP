@@ -235,7 +235,7 @@
 
     <script>
         // ==========================================
-        // CREDENCIAIS SUPABASE
+        // CREDENCIAIS SUPABASE (JÁ INSERIDAS)
         // ==========================================
         const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_4yUC6E4x5iMoh0vWj7CGmQ_BOIcA2_5';
@@ -251,7 +251,7 @@
             try {
                 txt.innerText = "Carregando dados atualizados...";
                 
-                // Fetch Relacional (JOIN)
+                // Fetch Relacional (JOIN) com tratamento de erro
                 const { data: dbData, error } = await supabase
                     .from('municipios')
                     .select(`
@@ -262,46 +262,63 @@
                         )
                     `);
 
-                if(error) throw error;
+                if(error) {
+                    console.error("Erro Supabase:", error);
+                    // Se o erro for de conexão ou tabela inexistente, não trava tudo
+                    if (error.message && (error.message.includes('fetch') || error.code === 'PGRST116')) {
+                         throw new Error("Erro de conexão ou tabela vazia.");
+                    }
+                    throw error;
+                }
 
                 loadedData = {};
-                dbData.forEach(m => {
-                    loadedData[m.id] = m;
-                    loadedData[m.id].courses = m.cursos || [];
-                    
-                    let uniqueGrads = new Set();
-                    let totalCerts = 0;
-                    
-                    loadedData[m.id].courses.forEach(c => {
-                        // Normalização
-                        c.cursoNome = c.nome;
-                        c.cursoData = c.data_realizacao;
-                        c.students = c.alunos || [];
-                        c.concluintes = 0;
+                // Verifica se dbData é válido antes de iterar
+                if (dbData && Array.isArray(dbData)) {
+                    dbData.forEach(m => {
+                        loadedData[m.id] = m;
+                        loadedData[m.id].courses = m.cursos || [];
                         
-                        c.students.forEach(s => {
-                            if((s.status||'').toUpperCase().includes('CONCLU')) {
-                                c.concluintes++;
-                                totalCerts++;
-                                uniqueGrads.add(s.cpf || s.nome);
-                            }
+                        let uniqueGrads = new Set();
+                        let totalCerts = 0;
+                        
+                        loadedData[m.id].courses.forEach(c => {
+                            // Normalização
+                            c.cursoNome = c.nome;
+                            c.cursoData = c.data_realizacao;
+                            c.students = c.alunos || [];
+                            c.concluintes = 0;
+                            
+                            c.students.forEach(s => {
+                                if((s.status||'').toUpperCase().includes('CONCLU')) {
+                                    c.concluintes++;
+                                    totalCerts++;
+                                    uniqueGrads.add(s.cpf || s.nome);
+                                }
+                            });
                         });
-                    });
 
-                    loadedData[m.id].uniqueGraduates = uniqueGrads.size;
-                    loadedData[m.id].totalCertifications = totalCerts;
-                });
-                
-                populateDatalists(dbData);
-                loadCityList(dbData);
+                        loadedData[m.id].uniqueGraduates = uniqueGrads.size;
+                        loadedData[m.id].totalCertifications = totalCerts;
+                    });
+                    
+                    populateDatalists(dbData);
+                    loadCityList(dbData);
+                } else {
+                    console.log("Banco de dados vazio ou sem resposta.");
+                    // Inicia listas vazias para não quebrar o UI
+                    loadCityList([]);
+                }
 
             } catch(e) {
                 console.error(e);
-                alert("Erro ao conectar ao Banco de Dados. Verifique a chave ou a conexão.\nDetalhe: " + e.message);
+                alert("Erro ao conectar ao Banco de Dados. Verifique a internet e as configurações.\nDetalhe: " + e.message);
             } finally {
+                // Remove o overlay mesmo se der erro
                 setTimeout(() => { 
-                    overlay.style.opacity = '0'; 
-                    setTimeout(() => overlay.style.display = 'none', 500);
+                    if(overlay) {
+                        overlay.style.opacity = '0'; 
+                        setTimeout(() => overlay.style.display = 'none', 500);
+                    }
                 }, 500);
             }
         }
@@ -321,6 +338,8 @@
             const dl2 = document.getElementById('city-datalist-st');
             dl.innerHTML = ''; dl2.innerHTML = '';
             
+            if(!data) return;
+
             data.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m.nome;
@@ -332,6 +351,14 @@
         function loadCityList(data) {
             const select = document.getElementById('city-selector');
             select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+            
+            if (!data || data.length === 0) {
+                 const opt = document.createElement('option');
+                 opt.innerText = "(Importe os dados primeiro)";
+                 select.appendChild(opt);
+                 return;
+            }
+
             data.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m.id;
@@ -347,6 +374,7 @@
         function loadCity(id) {
             if(!id) return;
             const data = loadedData[id];
+            if(!data) return;
             
             document.getElementById('view-municipio').innerText = data.nome;
             document.getElementById('view-territorio').innerText = data.territorio || '-';
@@ -431,9 +459,15 @@
 
             try {
                 // 1. Limpeza das tabelas
-                await supabase.from('alunos').delete().neq('id', 0);
-                await supabase.from('cursos').delete().neq('id', 0);
-                await supabase.from('municipios').delete().neq('id', 0);
+                console.log("Iniciando limpeza...");
+                const { error: e1 } = await supabase.from('alunos').delete().neq('id', 0);
+                if(e1) console.warn("Erro ao limpar alunos (pode estar vazio):", e1);
+                
+                const { error: e2 } = await supabase.from('cursos').delete().neq('id', 0);
+                if(e2) console.warn("Erro ao limpar cursos:", e2);
+
+                const { error: e3 } = await supabase.from('municipios').delete().neq('id', 0);
+                if(e3) console.warn("Erro ao limpar municipios:", e3);
 
                 const config = { delimiter: ";", header: true, skipEmptyLines: true, encoding: "ISO-8859-1" };
                 const [pMuni, pCid, pAlu] = await Promise.all([parseFile(f1, config), parseFile(f2, config), parseFile(f3, config)]);
