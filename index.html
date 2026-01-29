@@ -234,94 +234,76 @@
     </div>
 
     <script>
-        // ==========================================
-        // CREDENCIAIS SUPABASE (JÁ INSERIDAS)
-        // ==========================================
-        const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
-        // ==========================================
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let loadedData = {}; 
 
-        async function init() {
-            const overlay = document.getElementById('loading-overlay');
-            const txt = document.getElementById('loading-text');
+const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co'; 
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
 
-            try {
-                txt.innerText = "Carregando dados atualizados...";
-                
-                // Fetch Relacional (JOIN) com tratamento de erro
-                const { data: dbData, error } = await supabase
-                    .from('municipios')
-                    .select(`
-                        *,
-                        cursos (
-                            *,
-                            alunos (*)
-                        )
-                    `);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-                if(error) {
-                    console.error("Erro Supabase:", error);
-                    // Se o erro for de conexão ou tabela inexistente, não trava tudo
-                    if (error.message && (error.message.includes('fetch') || error.code === 'PGRST116')) {
-                         throw new Error("Erro de conexão ou tabela vazia.");
-                    }
-                    throw error;
-                }
+  let loadedData = {};
 
-                loadedData = {};
-                // Verifica se dbData é válido antes de iterar
-                if (dbData && Array.isArray(dbData)) {
-                    dbData.forEach(m => {
-                        loadedData[m.id] = m;
-                        loadedData[m.id].courses = m.cursos || [];
-                        
-                        let uniqueGrads = new Set();
-                        let totalCerts = 0;
-                        
-                        loadedData[m.id].courses.forEach(c => {
-                            // Normalização
-                            c.cursoNome = c.nome;
-                            c.cursoData = c.data_realizacao;
-                            c.students = c.alunos || [];
-                            c.concluintes = 0;
-                            
-                            c.students.forEach(s => {
-                                if((s.status||'').toUpperCase().includes('CONCLU')) {
-                                    c.concluintes++;
-                                    totalCerts++;
-                                    uniqueGrads.add(s.cpf || s.nome);
-                                }
-                            });
-                        });
+  async function init() {
+    const overlay = document.getElementById('loading-overlay');
+    const txt = document.getElementById('loading-text');
 
-                        loadedData[m.id].uniqueGraduates = uniqueGrads.size;
-                        loadedData[m.id].totalCertifications = totalCerts;
-                    });
-                    
-                    populateDatalists(dbData);
-                    loadCityList(dbData);
-                } else {
-                    console.log("Banco de dados vazio ou sem resposta.");
-                    // Inicia listas vazias para não quebrar o UI
-                    loadCityList([]);
-                }
+    try {
+      txt.innerText = "Carregando dados atualizados...";
 
-            } catch(e) {
-                console.error(e);
-                alert("Erro ao conectar ao Banco de Dados. Verifique a internet e as configurações.\nDetalhe: " + e.message);
-            } finally {
-                // Remove o overlay mesmo se der erro
-                setTimeout(() => { 
-                    if(overlay) {
-                        overlay.style.opacity = '0'; 
-                        setTimeout(() => overlay.style.display = 'none', 500);
-                    }
-                }, 500);
-            }
+      const { data: dbData, error } = await supabaseClient
+        .from('municipios')
+        .select(`
+          *,
+          cursos (
+            *,
+            alunos (*)
+          )
+        `);
+
+      if (error) throw error;
+
+      loadedData = {};
+      if (dbData && Array.isArray(dbData)) {
+        dbData.forEach(m => {
+          loadedData[m.id] = m;
+          loadedData[m.id].courses = m.cursos || [];
+
+          let uniqueGrads = new Set();
+          let totalCerts = 0;
+
+          loadedData[m.id].courses.forEach(c => {
+            c.students = c.alunos || [];
+            c.concluintes = 0;
+
+            c.students.forEach(s => {
+              if ((s.status || '').toUpperCase().includes('CONCLU')) {
+                c.concluintes++;
+                totalCerts++;
+                uniqueGrads.add(s.cpf || s.nome);
+              }
+            });
+          });
+
+          loadedData[m.id].uniqueGraduates = uniqueGrads.size;
+          loadedData[m.id].totalCertifications = totalCerts;
+        });
+
+        populateDatalists(dbData);
+        loadCityList(dbData);
+      } else {
+        loadCityList([]);
+      }
+    } catch (e) {
+      console.error("Erro init:", e);
+      alert("Erro ao conectar ao Banco de Dados.\nDetalhe: " + (e?.message || e));
+    } finally {
+      setTimeout(() => {
+        if (overlay) {
+          overlay.style.opacity = "0";
+          setTimeout(() => overlay.style.display = "none", 500);
         }
+      }, 300);
+    }
+  }
 
         // --- NAVEGAÇÃO ---
         function navigateTo(pageId) {
