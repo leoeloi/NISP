@@ -262,30 +262,35 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       if (error) throw error;
 
       loadedData = {};
-      if (dbData && Array.isArray(dbData)) {
-        dbData.forEach(m => {
-          loadedData[m.id] = m;
-          loadedData[m.id].courses = m.cursos || [];
+     if (dbData && Array.isArray(dbData)) {
+  dbData.forEach(m => {
+    loadedData[m.id] = m;
+    loadedData[m.id].courses = m.cursos || [];
 
-          let uniqueGrads = new Set();
-          let totalCerts = 0;
+    let uniqueGrads = new Set();
+    let totalCerts = 0;
 
-          loadedData[m.id].courses.forEach(c => {
-            c.students = c.alunos || [];
-            c.concluintes = 0;
+    loadedData[m.id].courses.forEach(c => {
+      // ✅ compatibilidade com schema novo (curso/ano/status)
+      c.nome = c.nome ?? c.curso;
+      c.data_realizacao = c.data_realizacao ?? c.ano;
+      c.situacao = c.situacao ?? c.status;
 
-            c.students.forEach(s => {
-              if ((s.status || '').toUpperCase().includes('CONCLU')) {
-                c.concluintes++;
-                totalCerts++;
-                uniqueGrads.add(s.cpf || s.nome);
-              }
-            });
-          });
+      c.students = c.alunos || [];
+      c.concluintes = 0;
 
-          loadedData[m.id].uniqueGraduates = uniqueGrads.size;
-          loadedData[m.id].totalCertifications = totalCerts;
-        });
+      c.students.forEach(s => {
+        if ((s.status || '').toUpperCase().includes('CONCLU')) {
+          c.concluintes++;
+          totalCerts++;
+          uniqueGrads.add(s.cpf || s.nome);
+        }
+      });
+    });
+
+    loadedData[m.id].uniqueGraduates = uniqueGrads.size;
+    loadedData[m.id].totalCertifications = totalCerts;
+  });
 
         populateDatalists(dbData);
         loadCityList(dbData);
@@ -442,16 +447,16 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             try {
                 // 1. Limpeza das tabelas
                 console.log("Iniciando limpeza...");
-                const { error: e1 } = await supabase.from('alunos').delete().neq('id', 0);
+                const { error: e1 } = await supabaseClient.from('alunos').delete().neq('id', 0);
                 if(e1) console.warn("Erro ao limpar alunos (pode estar vazio):", e1);
                 
-                const { error: e2 } = await supabase.from('cursos').delete().neq('id', 0);
+                const { error: e2 } = await supabaseClient.from('cursos').delete().neq('id', 0);
                 if(e2) console.warn("Erro ao limpar cursos:", e2);
 
-                const { error: e3 } = await supabase.from('municipios').delete().neq('id', 0);
+                const { error: e3 } = await supabaseClient.from('municipios').delete().neq('id', 0);
                 if(e3) console.warn("Erro ao limpar municipios:", e3);
 
-                const config = { delimiter: ";", header: true, skipEmptyLines: true, encoding: "ISO-8859-1" };
+                const config = { delimiter: ";", header: true, skipEmptyLines: true};
                 const [pMuni, pCid, pAlu] = await Promise.all([parseFile(f1, config), parseFile(f2, config), parseFile(f3, config)]);
 
                 // 2. Insert Municípios (com mapeamento de telefones)
@@ -473,7 +478,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     };
                 }).filter(x => x);
 
-                const { data: insertedMunis, error: errM } = await supabase.from('municipios').insert(muniPayload).select();
+                const { data: insertedMunis, error: errM } = await supabaseClient.from('municipios').upsert(muniPayload, { onConflict: 'nome' }).select();
                 if(errM) throw errM;
                 
                 const muniMap = {}; 
@@ -484,51 +489,85 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 pCid.forEach(r => {
                     const mId = muniMap[r['MUNICIPIO']];
                     if(mId) {
-                        const key = `${mId}-${r['CURSO']}`;
+                       const ano = parseInt(String(r['ANO'] || '').replace(/\D/g,''), 10) || null;
+                        const cursoNome = String(r['CURSO'] || '').trim();
+                        const key = `${mId}__${cursoNome}__${ano}`;
                         if(!cursoTempMap.has(key)) {
                             cursoTempMap.set(key, {
-                                municipio_id: mId,
-                                nome: r['CURSO'],
-                                data_realizacao: r['ANO'],
-                                comunicacao: r['CANAL DE COMUNICAÇÃO'], // Mapeamento correto
-                                situacao: r['STATUS'],
-                                obs: r['OBSERVAÇÕES']
+                            municipio_id: mId,
+                            curso: cursoNome,          // ✅ novo
+                            ano: ano,                  // ✅ novo (int)
+                            comunicacao: r['CANAL DE COMUNICAÇÃO'] || null,
+                            ac_convite: r['AC_CONVITE'] || r['AC CONVITE'] || null, // se existir no CSV
+                            status: r['STATUS'] || null, // ✅ novo
+                            obs: r['OBSERVAÇÕES'] || null
                             });
                         }
                     }
                 });
 
-                const { data: insertedCursos, error: errC } = await supabase.from('cursos').insert(Array.from(cursoTempMap.values())).select();
-                if(errC) throw errC;
+                const { data: insertedCursos, error: errC } = await supabaseClient
+                .from('cursos')
+                .upsert(Array.from(cursoTempMap.values()), { onConflict: 'municipio_id,curso,ano' })
+                .select('id, municipio_id, curso, ano');
+
+                if (errC) throw errC;
 
                 const cursoLookup = {};
                 insertedCursos.forEach(c => {
-                    cursoLookup[`${c.municipio_id}-${c.nome}`] = c.id;
+                   cursoLookup[`${c.municipio_id}__${c.curso}__${c.ano}`] = c.id;
                 });
 
-                // 4. Insert Alunos
+              // 4. Insert Alunos
                 const alunosPayload = [];
                 pAlu.forEach(r => {
-                    const mId = muniMap[r['MUNICIPIO']];
-                    if(mId) {
-                        const cId = cursoLookup[`${mId}-${r['CURSO']}`];
-                        if(cId) {
-                            alunosPayload.push({
-                                curso_id: cId,
-                                nome: r['ALUNO'],
-                                cpf: r['CPF'],
-                                status: r['STATUS']
-                            });
-                        }
-                    }
+                const muniNome = String(r['MUNICIPIO'] || '').trim();
+                const mId = muniMap[muniNome];
+                if (!mId) return;
+
+                const cursoNome = String(r['CURSO'] || '').trim();
+                const ano = parseInt(String(r['ANO'] || '').replace(/\D/g,''), 10) || null;
+
+                const cId = cursoLookup[`${mId}__${cursoNome}__${ano}`]; // ✅ chave nova
+                if (!cId) return;
+
+                const cpf = String(r['CPF'] || '').replace(/\D/g, '') || null; // ✅ dentro do loop
+
+                alunosPayload.push({
+                    curso_id: cId,
+                    nome: String(r['ALUNO'] || '').trim(),
+                    cpf,
+                    email: r['EMAIL'] || null,
+                    tel: r['TEL'] || null,
+                    status: r['STATUS'] || null,
+                    obs: r['OBS'] || r['OBSERVAÇÕES'] || null
+                });
                 });
 
+
                 // Batch Insert (Lotes de 1000)
-                for (let i = 0; i < alunosPayload.length; i += 1000) {
-                    const chunk = alunosPayload.slice(i, i + 1000);
-                    const { error: errA } = await supabase.from('alunos').insert(chunk);
-                    if(errA) throw errA;
+                const comCpf = alunosPayload.filter(a => a.cpf);
+                const semCpf = alunosPayload.filter(a => !a.cpf);
+
+                // 1️⃣ Alunos COM CPF → upsert (evita duplicidade)
+                for (let i = 0; i < comCpf.length; i += 1000) {
+                const chunk = comCpf.slice(i, i + 1000);
+                const { error } = await supabaseClient
+                    .from('alunos')
+                    .upsert(chunk, { onConflict: 'curso_id,cpf' });
+
+                if (error) throw error;
                 }
+
+                // 2️⃣ Alunos SEM CPF → insert normal
+                for (let i = 0; i < semCpf.length; i += 1000) {
+                const chunk = semCpf.slice(i, i + 1000);
+                const { error } = await supabaseClient
+                    .from('alunos')
+                    .insert(chunk);
+
+                if (error) throw error;
+}
 
                 alert("Importação Concluída com Sucesso!");
                 location.reload();
@@ -549,44 +588,60 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
             if(!muniEntry) return alert("Município inválido.");
 
-            const { error } = await supabase.from('cursos').insert({
+            const { error } = await supabaseClient.from('cursos').upsert({
                 municipio_id: muniEntry.id,
-                nome: cursoNome,
-                data_realizacao: ano,
-                situacao: 'Em Andamento',
+                curso: cursoNome,
+                ano: parseInt(String(ano).replace(/\D/g,''), 10) || null,
+                status: 'Em Andamento',
                 comunicacao: 'Inserção Manual'
-            });
+                }, { onConflict: 'municipio_id,curso,ano' });
+
             
             if(!error) { alert("Salvo!"); init(); } else alert("Erro ao salvar.");
         }
 
-        async function addStudentControl() {
-            const muniNome = document.getElementById('ca-municipio').value;
-            const cursoNome = document.getElementById('ca-curso').value;
-            const nome = document.getElementById('ca-nome').value;
-            const cpf = document.getElementById('ca-cpf').value;
+async function addStudentControl() {
+    const muniNome = document.getElementById('ca-municipio').value;
+    const cursoNome = document.getElementById('ca-curso').value;
+    const nome = document.getElementById('ca-nome').value;
+    const cpf = document.getElementById('ca-cpf').value;
 
-            const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
-            if(!muniEntry) return alert("Município inválido");
-            const cursoEntry = muniEntry.courses.find(c => c.nome === cursoNome);
-            if(!cursoEntry) return alert("Curso não existe.");
+    const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
+    if(!muniEntry) return alert("Município inválido");
 
-            const { error } = await supabase.from('alunos').insert({
-                curso_id: cursoEntry.id, nome, cpf, status: 'Matriculado'
-            });
-            if(!error) { alert("Aluno matriculado!"); init(); } else alert("Erro ao salvar.");
-        }
+    // ⚠️ Pega o curso mais recente com esse nome
+    const cursoEntry = muniEntry.courses
+        .filter(c => (c.nome ?? c.curso) === cursoNome)
+        .sort((a,b) => (b.ano ?? b.data_realizacao) - (a.ano ?? a.data_realizacao))[0];
+
+    if(!cursoEntry) return alert("Curso não existe.");
+
+    const { error } = await supabaseClient.from('alunos').insert({
+        curso_id: cursoEntry.id,
+        nome,
+        cpf: cpf ? cpf.replace(/\D/g,'') : null,
+        status: 'Matriculado'
+    });
+
+    if(!error) { 
+        alert("Aluno matriculado!"); 
+        init(); 
+    } else {
+        alert("Erro ao salvar.");
+    }
+}
+
 
         async function deleteCourse(id) {
             if(confirm("Apagar curso e todos alunos?")) {
-                await supabase.from('cursos').delete().eq('id', id);
+                await supabaseClient.from('cursos').delete().eq('id', id);
                 init();
             }
         }
 
         async function deleteStudent(id) {
             if(confirm("Apagar aluno?")) {
-                await supabase.from('alunos').delete().eq('id', id);
+                await supabaseClient.from('alunos').delete().eq('id', id);
                 init();
             }
         }
@@ -601,7 +656,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         <tr class="bg-white border-b">
                             <td class="px-4 py-2 font-bold">${m.nome}</td>
                             <td class="px-4 py-2 text-xs">${c.nome}</td>
-                            <td class="px-4 py-2 text-xs">${c.data_realizacao}</td>
+                            <td class="px-4 py-2 text-xs">${c.ano ?? c.data_realizacao}</td>
                             <td class="px-4 py-2 text-xs">${c.situacao}</td>
                             <td class="px-4 py-2 text-center"><button onclick="deleteCourse(${c.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td>
                         </tr>
