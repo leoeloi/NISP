@@ -7,6 +7,28 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let loadedData = {};
 
+let editingCursoId = null;
+
+const STATUS_OPCOES = ["Atendido", "Não Atendido", "Em Andamento"];
+const CONVITE_OPCOES = ["Solicitado pelo Município", "Aguardando resposta", "Sim", "Não"];
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function optionsHtml(list, selected) {
+  const sel = String(selected ?? '');
+  return list.map(v => {
+    const isSel = v === sel ? 'selected' : '';
+    return `<option value="${escapeHtml(v)}" ${isSel}>${escapeHtml(v)}</option>`;
+  }).join('');
+}
+
 // --- INIT ---
 async function init() {
   const overlay = document.getElementById('loading-overlay');
@@ -15,55 +37,107 @@ async function init() {
   try {
     txt.innerText = 'Carregando dados atualizados...';
 
-    const { data: dbData, error } = await supabaseClient
-      .from('municipios')
-      .select(`
-        *,
-        cursos (
-          *,
-          alunos (*)
-        )
-      `);
+    // 1) Busca municipios
+// 1) Busca municipios
+const { data: munis, error: errM } = await supabaseClient
+  .from('municipios')
+  .select('*')
+  .order('nome', { ascending: true });
 
-    if (error) throw error;
+if (errM) throw errM;
 
-    loadedData = {};
+// 2) Busca cursos (ordem inversa = mais recentes primeiro)
+const { data: cursos, error: errC } = await supabaseClient
+  .from('cursos')
+  .select('*')
+  .order('id', { ascending: false });
 
-    if (dbData && Array.isArray(dbData)) {
-      dbData.forEach(m => {
-        loadedData[m.id] = m;
-        loadedData[m.id].courses = m.cursos || [];
+if (errC) throw errC;
 
-        let uniqueGrads = new Set();
-        let totalCerts = 0;
+// 3) Busca alunos (opcional ordenar por id desc)
+const { data: alunos, error: errA } = await supabaseClient
+  .from('alunos')
+  .select('*')
+  .order('id', { ascending: false });
 
-        loadedData[m.id].courses.forEach(c => {
-          // compatibilidade com schema novo (curso/ano/status)
-          c.nome = c.nome ?? c.curso;
-          c.data_realizacao = c.data_realizacao ?? c.ano;
-          c.situacao = c.situacao ?? c.status;
+if (errA) throw errA;
 
-          c.students = c.alunos || [];
-          c.concluintes = 0;
 
-          c.students.forEach(s => {
-            if ((s.status || '').toUpperCase().includes('CONCLU')) {
-              c.concluintes++;
-              totalCerts++;
-              uniqueGrads.add(s.cpf || s.nome);
-            }
-          });
-        });
+// --- Montagem em memória ---
+loadedData = {};
 
-        loadedData[m.id].uniqueGraduates = uniqueGrads.size;
-        loadedData[m.id].totalCertifications = totalCerts;
-      });
+// index de municipios
+munis.forEach(m => {
+  loadedData[m.id] = {
+    ...m,
+    cursos: [],
+    courses: [],
+    uniqueGraduates: 0,
+    totalCertifications: 0
+  };
+});
 
-      populateDatalists(dbData);
-      loadCityList(dbData);
-    } else {
-      loadCityList([]);
-    }
+// index de cursos por municipio_id
+const cursosByMuni = new Map();
+cursos.forEach(c => {
+  const mid = c.municipio_id;
+  if (!cursosByMuni.has(mid)) cursosByMuni.set(mid, []);
+  cursosByMuni.get(mid).push({ ...c, alunos: [], students: [] });
+});
+
+// index de alunos por curso_id
+const alunosByCurso = new Map();
+alunos.forEach(a => {
+  const cid = a.curso_id;
+  if (!alunosByCurso.has(cid)) alunosByCurso.set(cid, []);
+  alunosByCurso.get(cid).push(a);
+});
+
+// ligar tudo
+Object.values(loadedData).forEach(m => {
+  const listCursos = cursosByMuni.get(m.id) || [];
+
+  // listCursos já vem em id desc (ordem invertida)
+  listCursos.forEach(c => {
+    const listAlunos = alunosByCurso.get(c.id) || [];
+    c.alunos = listAlunos;
+    c.students = listAlunos;
+
+    // compat com seu código de UI
+    c.nome = c.nome ?? c.curso;
+    c.data_realizacao = c.data_realizacao ?? c.ano;
+    c.situacao = c.situacao ?? c.status;
+
+    m.cursos.push(c);
+    m.courses.push(c);
+  });
+
+  // cálculos (iguais aos seus)
+  let uniqueGrads = new Set();
+  let totalCerts = 0;
+
+  m.courses.forEach(c => {
+    c.concluintes = 0;
+    (c.students || []).forEach(s => {
+      if ((s.status || '').toUpperCase().includes('CONCLU')) {
+        c.concluintes++;
+        totalCerts++;
+        uniqueGrads.add(s.cpf || s.nome);
+      }
+    });
+  });
+
+  m.uniqueGraduates = uniqueGrads.size;
+  m.totalCertifications = totalCerts;
+});
+
+// UI
+populateDatalists(munis);
+loadCityList(munis);
+populateCourseDatalist();
+
+
+   
   } catch (e) {
     console.error('Erro init:', e);
     alert('Erro ao conectar ao Banco de Dados.\nDetalhe: ' + (e?.message || e));
@@ -154,7 +228,8 @@ function loadCity(id) {
   document.getElementById('view-unique-grads').innerText = data.uniqueGraduates;
   document.getElementById('view-coverage-pct').innerText = coverage + '%';
 
-  renderCityCourses(data.courses);
+   renderCityCourses(data.courses || data.cursos);
+
 }
 
 function setBooleanBadge(id, val) {
@@ -348,22 +423,82 @@ async function processAndUploadFiles() {
 
 // --- CRUD ---
 async function addCityControl() {
-  const muniNome = document.getElementById('cc-municipio').value;
-  const cursoNome = document.getElementById('cc-curso').value;
-  const ano = document.getElementById('cc-ano').value;
+  const muniNome = document.getElementById('cc-municipio').value.trim();
+  const cursoNome = document.getElementById('cc-curso').value.trim();
+  const status = document.getElementById('cc-status').value.trim();
+  const obs = document.getElementById('cc-obs').value.trim() || null;
+  const comunicacao = document.getElementById('cc-comunicacao').value.trim() || null;
+  const acConvite = document.getElementById('cc-ac-convite').value;
+
 
   const muniEntry = Object.values(loadedData).find(m => m.nome === muniNome);
   if (!muniEntry) return alert('Município inválido.');
 
-  const { error } = await supabaseClient.from('cursos').upsert({
+  if (!cursoNome) return alert('Informe o curso.');
+  if (!status) return alert('Informe o status.');
+
+  const ano = extractYearFromCourseName(cursoNome); // ✅ derivado do nome
+
+  const payload = {
     municipio_id: muniEntry.id,
     curso: cursoNome,
-    ano: parseInt(String(ano).replace(/\D/g, ''), 10) || null,
-    status: 'Em Andamento',
-    comunicacao: 'Inserção Manual'
-  }, { onConflict: 'municipio_id,curso,ano' });
+    ano,                 // pode ser null se não achar, mas recomendo padronizar o nome com ano
+    status,
+    obs,
+    comunicacao: comunicacao,
+    ac_convite: acConvite
+  };
 
-  if (!error) { alert('Salvo!'); init(); } else alert('Erro ao salvar.');
+  const { error } = await supabaseClient
+    .from('cursos')
+    .upsert(payload, { onConflict: 'municipio_id,curso,ano' });
+
+  if (error) return alert('Erro ao salvar: ' + (error.message || error));
+
+  // limpa campos
+        document.getElementById('cc-comunicacao').value = '';
+        document.getElementById('cc-ac-convite').value = '';
+        document.getElementById('cc-obs').value = '';
+        document.getElementById('cc-status').value = '';
+        document.getElementById('cc-curso').value = '';
+
+  alert('Salvo!');
+  await init(); // recarrega e repopula o datalist de cursos
+  renderControlCities();
+}
+
+
+function populateCourseDatalist() {
+  const dl = document.getElementById('course-datalist');
+  if (!dl) return;
+  dl.innerHTML = '';
+
+  const set = new Set();
+
+  Object.values(loadedData).forEach(m => {
+    (m.courses || m.cursos || []).forEach(c => {
+      const nome = (c.curso ?? c.nome ?? '').trim();
+      if (nome) set.add(nome);
+    });
+  });
+
+  Array.from(set).sort((a, b) => a.localeCompare(b)).forEach(nome => {
+    const opt = document.createElement('option');
+    opt.value = nome;
+    dl.appendChild(opt);
+  });
+}
+
+
+function extractYearFromCourseName(courseName) {
+  const s = String(courseName || '');
+
+  // pega o último ano 20xx que aparecer no texto
+  const m = s.match(/(20\d{2})/g);
+  if (!m || m.length === 0) return null;
+
+  const year = parseInt(m[m.length - 1], 10);
+  return Number.isFinite(year) ? year : null;
 }
 
 async function addStudentControl() {
@@ -392,12 +527,22 @@ async function addStudentControl() {
 }
 
 async function deleteCourse(id) {
-  if (confirm('Apagar curso e todos alunos?')) {
-    await supabaseClient.from('cursos').delete().eq('id', id);
-    init();
-  }
-}
+  if (!confirm('Apagar curso e todos alunos?')) return;
 
+  const { error } = await supabaseClient
+    .from('cursos')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error(error);
+    alert('Erro ao apagar: ' + error.message);
+    return;
+  }
+
+  await init();             // <-- aqui é o principal
+  renderControlCities();    // agora renderiza com loadedData atualizado
+}
 async function deleteStudent(id) {
   if (confirm('Apagar aluno?')) {
     await supabaseClient.from('alunos').delete().eq('id', id);
@@ -405,24 +550,157 @@ async function deleteStudent(id) {
   }
 }
 
+function clearControlCityFilters() {
+  const ids = ['filter-cc-municipio', 'filter-cc-curso', 'filter-cc-ano', 'filter-cc-status'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  renderControlCities();
+}
+
+
+function setSelectOptions(selectEl, values) {
+  if (!selectEl) return;
+
+  const current = selectEl.value;
+  const firstOpt = selectEl.querySelector('option')?.outerHTML || '<option value="">Todos</option>';
+
+  const uniq = Array.from(new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== '')))
+    .map(v => String(v))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  selectEl.innerHTML = firstOpt + uniq.map(v => `<option value="${v}">${v}</option>`).join('');
+  // mantém seleção, se ainda existir
+  selectEl.value = uniq.includes(current) ? current : '';
+}
+
+function getFiltrosControleParticipacao() {
+  return {
+    municipio: document.getElementById('filter-cc-municipio')?.value || '',
+    curso: document.getElementById('filter-cc-curso')?.value || '',
+    ano: document.getElementById('filter-cc-ano')?.value || '',
+    status: document.getElementById('filter-cc-status')?.value || '',
+  };
+}
+
+function popularFiltrosControleParticipacao(rows) {
+  setSelectOptions(document.getElementById('filter-cc-municipio'), rows.map(r => r.municipioNome));
+  setSelectOptions(document.getElementById('filter-cc-curso'), rows.map(r => r.cursoNome));
+  setSelectOptions(document.getElementById('filter-cc-ano'), rows.map(r => r.ano));
+  // status já tem opções fixas no HTML, então não precisa popular via JS
+}
+
+
 // --- Render (Controls) ---
 function renderControlCities() {
   const tbody = document.getElementById('control-cities-table');
+  if (!tbody) return;
   tbody.innerHTML = '';
+
+  const rows = [];
   Object.values(loadedData).forEach(m => {
-    if (m.courses) m.courses.forEach(c => {
-      tbody.insertAdjacentHTML('beforeend', `
-        <tr class="bg-white border-b">
-          <td class="px-4 py-2 font-bold">${m.nome}</td>
-          <td class="px-4 py-2 text-xs">${c.nome}</td>
-          <td class="px-4 py-2 text-xs">${c.ano ?? c.data_realizacao}</td>
-          <td class="px-4 py-2 text-xs">${c.situacao}</td>
-          <td class="px-4 py-2 text-center"><button onclick="deleteCourse(${c.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td>
-        </tr>
-      `);
+    (m.courses || m.cursos || []).forEach(c => {
+    rows.push({
+  cursoId: c.id,
+  municipioNome: m.nome,
+  cursoNome: (c.curso ?? c.nome ?? '').trim(),
+  ano: c.ano ?? c.data_realizacao ?? null,          // <-- ADD
+  status: c.status ?? c.situacao ?? '',
+  comunicacao: c.comunicacao ?? '',
+  ac_convite: c.ac_convite ?? '',
+  obs: c.obs ?? ''
+        });
     });
   });
+
+  rows.sort((a, b) => (b.cursoId || 0) - (a.cursoId || 0));
+    // 1) popular selects com base nos dados atuais
+    popularFiltrosControleParticipacao(rows);
+
+    // 2) ler filtros selecionados
+    const f = getFiltrosControleParticipacao();
+
+    // 3) filtrar
+    const rowsFiltradas = rows.filter(r => {
+    if (f.municipio && r.municipioNome !== f.municipio) return false;
+    if (f.curso && r.cursoNome !== f.curso) return false;
+    if (f.status && String(r.status || '') !== f.status) return false;
+
+    if (f.ano) {
+        const anoR = String(r.ano ?? '');
+        if (anoR !== String(f.ano)) return false;
+    }
+    return true;
+    });
+
+  rowsFiltradas.forEach(r => {
+    const emEdicao = (editingCursoId === r.cursoId);
+
+    if (!emEdicao) {
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="bg-white border-b">
+          <td class="px-4 py-2 font-bold">${escapeHtml(r.municipioNome)}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.cursoNome)}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.comunicacao || '-')}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.ac_convite || '-')}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.status || '-')}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.obs || '-')}</td>
+          <td class="px-4 py-2 text-center whitespace-nowrap">
+            <button onclick="startEditCurso(${r.cursoId})" class="text-blue-600 mr-2" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button onclick="deleteCourse(${r.cursoId})" class="text-red-500" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `);
+    } else {
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="bg-yellow-50 border-b">
+          <td class="px-4 py-2 font-bold">${escapeHtml(r.municipioNome)}</td>
+          <td class="px-4 py-2 text-xs">${escapeHtml(r.cursoNome)}</td>
+
+          
+          <td class="px-4 py-2 text-xs">
+          <input id="ed-comunicacao-${r.cursoId}" class="w-full border p-1 rounded text-xs"
+          value="${escapeHtml(r.comunicacao)}" placeholder="Canal...">
+          </td>
+          
+          <td class="px-4 py-2 text-xs">
+          <select id="ed-convite-${r.cursoId}" class="w-full border p-1 rounded text-xs">
+          ${optionsHtml(CONVITE_OPCOES, r.ac_convite)}
+          </select>
+          </td>
+          <td class="px-4 py-2 text-xs">
+            <select id="ed-status-${r.cursoId}" class="w-full border p-1 rounded text-xs">
+              ${optionsHtml(STATUS_OPCOES, r.status)}
+            </select>
+          </td>
+
+          <td class="px-4 py-2 text-xs">
+            <input id="ed-obs-${r.cursoId}" class="w-full border p-1 rounded text-xs"
+                   value="${escapeHtml(r.obs)}" placeholder="Obs...">
+          </td>
+
+          <td class="px-4 py-2 text-center whitespace-nowrap">
+            <button onclick="saveEditCurso(${r.cursoId})" class="text-green-700 mr-2" title="Salvar">
+              <i class="fas fa-check"></i>
+            </button>
+            <button onclick="cancelEditCurso()" class="text-gray-700 mr-2" title="Cancelar">
+              <i class="fas fa-times"></i>
+            </button>
+            <button onclick="deleteCourse(${r.cursoId})" class="text-red-500" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `);
+    }
+  });
 }
+
 
 function renderControlStudents() {
   const filter = document.getElementById('control-student-search').value.toLowerCase();
@@ -535,6 +813,50 @@ function toggleModal(id) {
   m.classList.toggle('pointer-events-none');
 }
 
+
+function startEditCurso(cursoId) {
+  editingCursoId = cursoId;
+  renderControlCities();
+}
+
+function cancelEditCurso() {
+  editingCursoId = null;
+  renderControlCities();
+}
+
+async function saveEditCurso(cursoId) {
+  const status = document.getElementById(`ed-status-${cursoId}`)?.value || null;
+  const comunicacao = document.getElementById(`ed-comunicacao-${cursoId}`)?.value.trim() || null;
+  const acConvite = document.getElementById(`ed-convite-${cursoId}`)?.value || null;
+  const obs = document.getElementById(`ed-obs-${cursoId}`)?.value.trim() || null;
+
+  // validações básicas
+  if (status && !STATUS_OPCOES.includes(status)) return alert("Status inválido.");
+  if (acConvite && !CONVITE_OPCOES.includes(acConvite)) return alert("Opção de convite inválida.");
+
+  const { error } = await supabaseClient
+    .from('cursos')
+    .update({
+      status,
+      comunicacao,
+      ac_convite: acConvite,
+      obs
+    })
+    .eq('id', cursoId);
+
+  if (error) {
+    console.error(error);
+    return alert("Erro ao salvar: " + (error.message || error));
+  }
+
+  editingCursoId = null;
+
+  // atualiza dados e re-render sem F5
+  await init();
+  renderControlCities();
+}
+
+
 // Expor funções para onclick no HTML
 window.navigateTo = navigateTo;
 window.toggleModal = toggleModal;
@@ -546,6 +868,11 @@ window.deleteCourse = deleteCourse;
 window.deleteStudent = deleteStudent;
 window.renderControlStudents = renderControlStudents;
 window.filterStudents = filterStudents;
+window.clearControlCityFilters = clearControlCityFilters;
+window.renderControlCities = renderControlCities;
+
+
 
 // Start
 init();
+

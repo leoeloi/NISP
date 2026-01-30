@@ -65,7 +65,7 @@
     </div>
   </nav>
 
-  <div class="max-w-7xl mx-auto p-4 md:p-6 pb-20">
+  <div class="max-w-[1800px] mx-auto p-4 md:p-6 pb-20">
 
     <div id="page-municipios" class="page-section active">
       <div class="bg-white card-shadow rounded-lg overflow-hidden border border-gray-200">
@@ -200,43 +200,108 @@
     </div>
 
     <div id="page-controle-cidades" class="page-section">
-      <div class="bg-white card-shadow rounded-lg p-6">
-        <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Participação</h2>
-        <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
-          <form id="add-city-course-form" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <div>
-              <label class="text-xs font-bold text-gray-500">Município</label>
-              <input list="city-datalist" id="cc-municipio" class="w-full border p-2 rounded text-sm" required>
-              <datalist id="city-datalist"></datalist>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-gray-500">Curso</label>
-              <input type="text" id="cc-curso" class="w-full border p-2 rounded text-sm" required>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-gray-500">Ano</label>
-              <input type="text" id="cc-ano" class="w-full border p-2 rounded text-sm" required>
-            </div>
-            <button type="button" onclick="addCityControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">Adicionar</button>
-          </form>
+  <div class="bg-white card-shadow rounded-lg p-6">
+    <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Participação</h2>
+
+    <!-- Formulário de adição -->
+    <div class="bg-blue-50 p-4 rounded mb-4 border border-blue-100">
+      <form id="add-city-course-form" class="control-form grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
+        <div>
+          <label class="text-xs font-bold text-gray-500">Município</label>
+          <input list="city-datalist" id="cc-municipio" class="w-full border p-2 rounded text-sm" required>
+          <datalist id="city-datalist"></datalist>
         </div>
 
-        <div class="table-container border rounded-lg">
-          <table class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
-              <tr>
-                <th class="px-4 py-2">Município</th>
-                <th class="px-4 py-2">Curso</th>
-                <th class="px-4 py-2">Ano</th>
-                <th class="px-4 py-2">Status</th>
-                <th class="px-4 py-2 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="control-cities-table" class="divide-y divide-gray-100"></tbody>
-          </table>
+        <div>
+          <label class="text-xs font-bold text-gray-500">Curso</label>
+          <input list="course-datalist" type="text" id="cc-curso" class="w-full border p-2 rounded text-sm" required>
+          <datalist id="course-datalist"></datalist>
         </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Canal de comunicação</label>
+          <input type="text" id="cc-comunicacao" class="w-full border p-2 rounded text-sm" placeholder="Ex: Ofício, Email, WhatsApp">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Aceitou convite?</label>
+          <select id="cc-ac-convite" class="w-full border p-2 rounded text-sm" required>
+            <option value="" selected disabled>Selecione...</option>
+            <option>Solicitado pelo Município</option>
+            <option>Aguardando resposta</option>
+            <option>Sim</option>
+            <option>Não</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Status</label>
+          <select id="cc-status" class="w-full border p-2 rounded text-sm" required>
+            <option value="" selected disabled>Selecione...</option>
+            <option>Atendido</option>
+            <option>Não Atendido</option>
+            <option>Em Andamento</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Observação</label>
+          <input type="text" id="cc-obs" class="w-full border p-2 rounded text-sm" placeholder="Opcional">
+        </div>
+
+        <button type="button" onclick="addCityControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">
+          Adicionar
+        </button>
+      </form>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
+      <div class="control-filters grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <div>
+          <label class="text-xs font-bold text-gray-500">Filtrar Município</label>
+          <select id="filter-cc-municipio" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"> <option value="">Todos</option></select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Filtrar Curso</label>
+          <select id="filter-cc-curso" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Filtrar Ano</label>
+          <select id="filter-cc-ano" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-gray-500">Filtrar Status</label>
+          <select id="filter-cc-status" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
+        </div>
+
+        <button type="button" onclick="clearControlCityFilters()" class="bg-slate-800 text-white p-2 rounded font-bold text-sm hover:bg-slate-900">
+          Limpar filtros
+        </button>
       </div>
     </div>
+
+    <div class="table-container border rounded-lg">
+      <table class="w-full text-sm text-left text-gray-600 control-table">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
+          <tr>
+            <th class="px-4 py-2">Município</th>
+            <th class="px-4 py-2">Curso</th>
+            <th class="px-4 py-2">Canal</th>
+            <th class="px-4 py-2">Aceitou?</th>
+            <th class="px-4 py-2">Status</th>
+            <th class="px-4 py-2">Observação</th>
+            <th class="px-4 py-2 text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="control-cities-table" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
     <div id="page-controle-alunos" class="page-section">
       <div class="bg-white card-shadow rounded-lg p-6">

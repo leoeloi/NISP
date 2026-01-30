@@ -62,7 +62,7 @@ details > summary {
 
 details > summary::-webkit-details-marker { display: none; }
 
-.table-container { max-height: 500px; overflow-y: auto; }
+.table-container { max-height: 500px; overflow-y: auto;  overflow-x: auto;}
 
 .page-section { display: none; }
 .page-section.active { display: block; animation: fadeIn 0.3s ease-in-out; }
@@ -97,3 +97,25 @@ details > summary::-webkit-details-marker { display: none; }
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+
+
+/* Controle de Participação */
+.control-table { table-layout: fixed; }
+.control-table th, .control-table td { vertical-align: top; }
+.control-table th:nth-child(1), .control-table td:nth-child(1) { width: 18%; }
+.control-table th:nth-child(2), .control-table td:nth-child(2) { width: 26%; }
+.control-table th:nth-child(3), .control-table td:nth-child(3) { width: 14%; }
+.control-table th:nth-child(4), .control-table td:nth-child(4) { width: 14%; }
+.control-table th:nth-child(5), .control-table td:nth-child(5) { width: 12%; }
+.control-table th:nth-child(6), .control-table td:nth-child(6) { width: 12%; }
+.control-table th:nth-child(7), .control-table td:nth-child(7) { width: 4%; text-align: center; }
+
+.truncate-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 1px; /* força truncamento em table-layout: fixed */
+}
+
+.table-container { overflow-x: auto; }
