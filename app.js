@@ -4,6 +4,41 @@ const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// 1. Escuta o formulário de login
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const errorDiv = document.getElementById('login-error');
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errorDiv.innerText = "Credenciais inválidas ou sem acesso.";
+    errorDiv.classList.remove('hidden');
+  } else {
+    checkSession(); // Verifica e libera o acesso
+  }
+});
+
+// 2. Verifica se o usuário já está logado ao carregar a página
+async function checkSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const overlay = document.getElementById('login-overlay');
+
+  if (session) {
+    overlay.classList.add('hidden'); // Esconde o login e mostra o site
+    init(); // Só carrega os dados do banco após o login
+  } else {
+    overlay.classList.remove('hidden');
+  }
+}
+
+// 3. Função de Logout (Adicione um botão no HTML se desejar)
+async function handleLogout() {
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
 
 let loadedData = {};
 
@@ -589,7 +624,7 @@ function popularFiltrosControleParticipacao(rows) {
   setSelectOptions(document.getElementById('filter-cc-municipio'), rows.map(r => r.municipioNome));
   setSelectOptions(document.getElementById('filter-cc-curso'), rows.map(r => r.cursoNome));
   setSelectOptions(document.getElementById('filter-cc-ano'), rows.map(r => r.ano));
-  // status já tem opções fixas no HTML, então não precisa popular via JS
+  setSelectOptions(document.getElementById('filter-cc-status'), rows.map(r => r.status));
 }
 
 

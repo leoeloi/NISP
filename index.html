@@ -18,41 +18,65 @@
   <script src="./app.js" defer></script>
 </head>
 
-<body class="text-gray-800 min-h-screen relative">
+<body>
 
   <div id="loading-overlay">
     <div class="loader"></div>
-    <p id="loading-text" class="mt-4 text-gray-500 font-bold">Conectando ao Banco SQL...</p>
+    <p id="loading-text" class="pag_carregamento">Conectando ao Banco SQL...</p>
   </div>
-
-  <nav class="fixed top-0 w-full bg-blue-900 text-white shadow-lg z-40 h-16 flex items-center px-4 md:px-8 justify-between">
-    <div class="flex items-center gap-4">
-      <div class="w-10 h-10 bg-white/10 rounded flex items-center justify-center backdrop-blur-sm border border-white/20">
-        <i class="fas fa-shield-alt text-xl"></i>
+<div id="login-overlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900">
+  <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+    <div class="text-center mb-6">
+      <i class="fas fa-shield-alt text-blue-900 text-4xl mb-2"></i>
+      <h2 class="text-2xl font-black text-blue-900">NISP LOGIN</h2>
+      <p class="text-gray-500 text-sm">Acesso restrito</p>
+    </div>
+    
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">E-mail</label>
+        <input type="email" id="login-email" required class="w-full border p-3 rounded bg-gray-50 focus:ring-2 ring-blue-500 outline-none">
       </div>
       <div>
-        <h1 class="font-black text-xl tracking-wider leading-none">NISP</h1>
-        <p class="text-[10px] opacity-70 uppercase tracking-widest">Base de Dados Real</p>
+        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Senha</label>
+        <input type="password" id="login-password" required class="w-full border p-3 rounded bg-gray-50 focus:ring-2 ring-blue-500 outline-none">
+      </div>
+      <button type="submit" class="w-full bg-blue-900 text-white font-bold py-3 rounded hover:bg-blue-800 transition shadow-lg">
+        Entrar no Sistema
+      </button>
+      <div id="login-error" class="text-red-600 text-xs text-center font-bold hidden"></div>
+    </form>
+  </div>
+</div>
+  <nav class="barra_navegacao_principal">
+    <div class="logo_nome_alinhados">
+      <div class="bloco_icone_logo">
+        <i class="fas fa-shield-alt icone_destaque"></i>
+      </div>
+      <div>
+        <h1 class="titulo_sistema_principal">NISP</h1>
+        <p class="subtitulo_sistema_descricao">Nivelamento Interparticipativo de Segurança Publica</p>
       </div>
     </div>
 
-    <div class="flex items-center gap-2 md:gap-6">
-      <div class="nav-item relative group h-16 flex items-center cursor-pointer px-2">
-        <span class="font-bold uppercase text-xs md:text-sm tracking-wide flex items-center gap-2 hover:text-blue-200">
+    <div class="menu_navegacao_itens">
+      <div class="item_navegacao">
+        <span class="texto_item_menu">
           <i class="fas fa-chart-line"></i> Painel <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
         </span>
-        <div class="dropdown-menu mt-1">
+        <div class="dropdown-menu">
           <a onclick="navigateTo('page-municipios')" class="dropdown-item">Municípios</a>
           <a onclick="navigateTo('page-cursos-view')" class="dropdown-item">Cursos (Geral)</a>
           <a onclick="navigateTo('page-alunos-view')" class="dropdown-item">Alunos (Busca)</a>
         </div>
       </div>
 
-      <div class="nav-item relative group h-16 flex items-center cursor-pointer px-2">
-        <span class="font-bold uppercase text-xs md:text-sm tracking-wide flex items-center gap-2 hover:text-blue-200">
+      <div class="menu_navegacao_itens">
+      <div class="item_navegacao">
+        <span class="texto_item_menu">
           <i class="fas fa-database"></i> Controle <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
         </span>
-        <div class="dropdown-menu mt-1">
+        <div class="dropdown-menu">
           <a onclick="navigateTo('page-controle-cidades')" class="dropdown-item">Controle Cidades</a>
           <a onclick="navigateTo('page-controle-alunos')" class="dropdown-item">Controle Alunos</a>
         </div>
@@ -68,121 +92,136 @@
   <div class="max-w-[1600px] mx-auto p-4 md:p-6 pb-20">
 
     <div id="page-municipios" class="page-section active">
-      <div class="bg-white card-shadow rounded-lg overflow-hidden border border-gray-200">
-        <div class="header-gradient text-white p-6">
-          <div class="mb-6 bg-white/10 p-2 rounded flex flex-col md:flex-row items-center gap-2 backdrop-blur-sm border border-white/20">
-            <label class="text-xs font-bold uppercase text-blue-100 pl-2 hidden md:inline">Município:</label>
-            <select id="city-selector" onchange="loadCity(this.value)" class="bg-blue-900/50 text-white border border-blue-400/30 text-sm rounded px-3 py-1 focus:outline-none focus:bg-blue-900 cursor-pointer flex-1 font-bold w-full md:w-auto">
+      <div class="cartao_padrao">
+        <div class="header-municipio">
+          <div class="bloco_filtro_translucido">
+            <label class="label_filtro_municipio">Município:</label>
+            <select id="city-selector" onchange="loadCity(this.value)" class="select_municipio">
               <option value="" disabled selected>Carregando...</option>
             </select>
           </div>
 
           <div>
-            <h1 class="text-3xl font-black uppercase tracking-wide" id="view-municipio">...</h1>
-            <div class="inline-block bg-blue-800/50 px-3 py-1 rounded text-xs font-mono mt-1 border border-blue-400/30">
+            <h1 class="titulo_municipio" id="view-municipio">...</h1>
+            <div class="badge_territorio">
               Território: <span id="view-territorio">...</span>
             </div>
           </div>
         </div>
 
-        <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div class="md:col-span-4 flex flex-col gap-6">
-            <div class="bg-slate-50 rounded-lg border border-slate-200 p-5 space-y-4">
-              <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2">Informações</h3>
-              <div class="flex justify-between">
-                <span class="text-sm text-gray-500">Possui Guarda?</span>
-                <span id="badge-possui" class="status-badge bg-gray-100">...</span>
+        <div class="container-dados-municipio">
+          <div class="coluna_lateral">
+            <div class="card-box">
+              <h3 class="titulo_cartao">Informações</h3>
+              <div class="info-row">
+                <span class="info-label">Possui Guarda?</span>
+                <span id="badge-possui" class="status-badge">...</span>
               </div>
-              <div class="flex justify-between">
-                <span class="text-sm text-gray-500">Guarda Armada?</span>
-                <span id="badge-armada" class="status-badge bg-gray-100">...</span>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4 text-center">
-              <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <div class="text-blue-600 text-xs font-bold uppercase">Efetivo</div>
-                <div class="text-3xl font-black text-gray-800" id="view-efetivo">...</div>
-              </div>
-              <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <div class="text-blue-600 text-xs font-bold uppercase">População</div>
-                <div class="text-2xl font-black text-gray-800" id="view-populacao">...</div>
+              <div class="info-row">
+                <span class="info-label">Guarda Armada?</span>
+                <span id="badge-armada" class="status-badge">...</span>
               </div>
             </div>
-
-            <div class="bg-white rounded-lg border border-gray-200 p-5 text-xs space-y-3">
-                <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2 text-base">Prefeitura</h3>
-              <div>
-                <span class="font-bold text-gray-500 block mb-1">Prefeito(a)</span>
-                <span id="view-prefeito" class="text-sm text-gray-800 font-bold">...</span>
-              </div>
-              <div class="grid grid-cols-1 gap-1 pl-2 border-l-2 border-blue-100">
-                <div class="flex items-center gap-2">
-                  <i class="far fa-envelope text-blue-400 w-4"></i>
-                  <span class="text-blue-600 break-all" id="view-email-pref">...</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <i class="fas fa-phone text-blue-400 w-4"></i>
-                  <span class="text-gray-600 font-medium" id="view-tel-pref">...</span>
-                </div>
+            <div class="stats-grid">
+              
+              <div class="stat-card">
+                <div class="stat-label">Efetivo</div>
+                <div class="stat-value stat-large" id="view-efetivo">...</div>
               </div>
 
-              <div class="border-t pt-2 mt-2">
-                <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2 text-base">Guarda Municipal</h3>
-                <span class="font-bold text-gray-500 block mb-1">Chefe da Guarda</span>
-                <span id="view-chefe-gm" class="text-sm text-gray-800 font-bold">...</span>
-                <div class="grid grid-cols-1 gap-1 pl-2 border-l-2 border-green-100">
-                  <div class="flex items-center gap-2">
-                    <i class="far fa-envelope text-green-600 w-4"></i>
-                    <span class="text-blue-600 break-all" id="view-email-gm">...</span>
+              <div class="stat-card">
+                <div class="stat-label">População</div>
+                <div class="stat-value stat-medium" id="view-populacao">...</div>
+              </div>
+
+            </div>
+
+              <div class="info-card">
+                <h3 class="titulo_cartao card-title-base">Prefeitura</h3>
+
+                <div class="person-block">
+                  <span class="label-strong">Prefeito(a)</span>
+                  <span id="view-prefeito" class="value-strong">...</span>
+                </div>
+
+                <div class="contact-list contact-list-blue">
+                  <div class="contact-row">
+                    <i class="far fa-envelope icon-blue"></i>
+                    <span class="text-link break-anywhere" id="view-email-pref">...</span>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <i class="fas fa-phone text-green-600 w-4"></i>
-                    <span class="text-gray-600 font-medium" id="view-tel-gm">...</span>
+                  <div class="contact-row">
+                    <i class="fas fa-phone icon-blue"></i>
+                    <span class="text-muted-medium" id="view-tel-pref">...</span>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="bg-slate-50 rounded-lg border border-slate-200 p-5 space-y-4">
-            <h3 class="text-slate-800 font-bold border-b border-slate-200 pb-2">Observações</h3>
-            <div id="view-obs-mun" class="text-sm text-gray-600">Nenhuma observação registrada.</div>
-          </div>
-            </div>
-          <div class="md:col-span-8 flex flex-col gap-6">
-            <div class="bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-lg p-6 shadow-md border-l-4 border-blue-500 grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-3xl font-black text-white" id="view-total-certs">0</div>
-                <div class="text-[10px] uppercase font-bold text-slate-400">Certificações</div>
-              </div>
-              <div>
-                <div class="text-3xl font-black text-green-400" id="view-unique-grads">0</div>
-                <div class="text-[10px] uppercase font-bold text-slate-400">Alunos Únicos</div>
-              </div>
-              <div>
-                <div class="text-3xl font-black text-blue-400" id="view-coverage-pct">0%</div>
-                <div class="text-[10px] uppercase font-bold text-slate-400">Cobertura</div>
+
+              <div class="section-divider">
+                <h3 class="titulo_cartao card-title-base">Guarda Municipal</h3>
+
+                <div class="person-block">
+                  <span class="label-strong">Chefe da Guarda</span>
+                  <span id="view-chefe-gm" class="value-strong">...</span>
+                </div>
+
+                <div class="contact-list contact-list-green">
+                  <div class="contact-row">
+                    <i class="far fa-envelope icon-green"></i>
+                    <span class="text-link break-anywhere" id="view-email-gm">...</span>
+                  </div>
+                  <div class="contact-row">
+                    <i class="fas fa-phone icon-green"></i>
+                    <span class="text-muted-medium" id="view-tel-gm">...</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div>
-              <h3 class="text-gray-700 font-bold mb-3">Histórico de Cursos</h3>
-              <div id="courses-container" class="space-y-3"></div>
+              <div class="card-box">
+              <h3 class="titulo_cartao">Observações</h3>
+              <div id="view-obs-mun" class="text-muted-medium">Nenhuma observação registrada.</div>
             </div>
+              </div>
+            <div class="col-span-8 container-flex">
+    
+            <div class="stats-card">
+              <div class="stat-item">
+                <div class="stat-number" id="view-total-certs">0</div>
+                <div class="stat-label">Certificações</div>
+              </div>
+
+              <div class="stat-item">
+                <div class="stat-number green" id="view-unique-grads">0</div>
+                <div class="stat-label">Alunos Únicos</div>
+              </div>
+
+              <div class="stat-item">
+                <div class="stat-number blue" id="view-coverage-pct">0%</div>
+                <div class="stat-label">Cobertura</div>
+              </div>
+            </div>
+
+            <div class="courses-section">
+              <h3 class="section-title">Histórico de Cursos</h3>
+              <div id="courses-container" class="courses-list"></div>
+            </div>
+
           </div>
+
         </div>
       </div>
     </div>
 
     <div id="page-cursos-view" class="page-section">
-      <div class="bg-white card-shadow rounded-lg p-6">
-        <h2 class="text-2xl font-black text-gray-800 mb-6 pb-4 border-b">Painel de Cursos por Edição</h2>
+      <div class="cartao_padrao">
+        <h2 class="section-heading">Painel de Cursos por Edição</h2>
         <div id="global-courses-list" class="space-y-4"></div>
       </div>
     </div>
 
     <div id="page-alunos-view" class="page-section">
-      <div class="bg-white card-shadow rounded-lg p-6">
+      <div class="cartao_padrao">
         <div class="flex justify-between items-center mb-6 pb-4 border-b gap-4">
-          <h2 class="text-2xl font-black text-gray-800">Busca de Alunos</h2>
+          <h2 class="section-heading">Busca de Alunos</h2>
           <input type="text" id="student-search" onkeyup="filterStudents()" placeholder="Buscar por Nome ou CPF..." class="w-full md:w-1/3 pl-4 py-2 border rounded-full bg-gray-50 focus:border-blue-500 outline-none">
         </div>
 
@@ -205,8 +244,8 @@
     </div>
 
     <div id="page-controle-cidades" class="page-section">
-  <div class="bg-white card-shadow rounded-lg p-6">
-    <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Participação</h2>
+  <div class="cartao_padrao">
+    <h2 class="section-heading">Controle de Participação</h2>
 
     <!-- Formulário de adição -->
     <div class="bg-blue-50 p-4 rounded mb-4 border border-blue-100">
@@ -309,8 +348,8 @@
 </div>
 
     <div id="page-controle-alunos" class="page-section">
-      <div class="bg-white card-shadow rounded-lg p-6">
-        <h2 class="text-2xl font-black text-gray-800 mb-4">Controle de Alunos</h2>
+      <div class="cartao_padrao">
+        <h2 class="section-heading">Controle de Alunos</h2>
         <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
           <form id="add-student-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div>
