@@ -216,9 +216,10 @@ function loadCity(id) {
   document.getElementById('view-prefeito').innerText = data.prefeito || '-';
   document.getElementById('view-email-pref').innerText = data.email_pref || '-';
   document.getElementById('view-tel-pref').innerText = data.telefone_pref || '-';
-
+  document.getElementById('view-chefe-gm').innerText = data.chefe_gm || '-';
   document.getElementById('view-email-gm').innerText = data.email_gm || '-';
   document.getElementById('view-tel-gm').innerText = data.telefone_gm || '-';
+  document.getElementById('view-obs-mun').innerText = data.obs_mun || 'Nenhuma observação registrada.';
 
   setBooleanBadge('badge-possui', data.possui_guarda);
   setBooleanBadge('badge-armada', data.guarda_armada);
