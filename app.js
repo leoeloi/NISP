@@ -4,6 +4,7 @@ const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // 1. Escuta o formulário de login
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -815,7 +816,7 @@ function filterStudents() {
     const m = loadedData[id];
     if (m.courses) m.courses.forEach(c => {
       if (c.students) c.students.forEach(s => {
-        if (count > 50 && term === '') return;
+        
         if (term === '' || s.nome.toLowerCase().includes(term) || (s.cpf || '').includes(term)) {
           tbody.insertAdjacentHTML('beforeend', `
             <tr class="bg-white border-b hover:bg-gray-50">
