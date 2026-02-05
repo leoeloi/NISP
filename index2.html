@@ -6,6 +6,8 @@
     <title>NISP - Nivelamento Interparticipativo de Segurança Publica</title>
     <link rel="stylesheet" href="styles2.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app2.js"></script>
 </head>
 <body>
     <nav>
@@ -45,10 +47,6 @@
                 <div class="busca-mun">
                     <div style="font-size: small;">MUNICÍPIOS: </div>
                     <select name="municipio" id="municipio-select">
-                        <option value="todos">Todos</option>
-                        <option value="municipio1">Municipio 1</option>
-                        <option value="municipio2">Municipio 2</option>
-                        <option value="municipio3">Municipio 3</option>
                     </select>
                 </div>
             <div id="nome-mun">CIDADE</div>
@@ -59,7 +57,7 @@
             </div>
             <div class="painel-mun-main">
                 <div class="painel-mun-info">
-                    <div style="font-weight: bold; margin-bottom: 10px; font-size: larger; color: rgb(53, 53, 53); margin-left: 20px;">Informações</div>
+                    <div class="titulo-pagina">Informações</div>
                     <div class="info-guarda">
                         <div>
                             <div>Possui Guarda?</div>
@@ -104,6 +102,10 @@
                             <i class="fa-solid fa-phone icon-contato"></i>
                             <div id="tel-gm">71-988888888</div>
                         </div>
+                    </div>
+                    <div class="info-obs">
+                        <div>Observações</div>
+                        <div id="observacoes">Nenhuma observação registrada.</div>
                     </div>
                 </div>
                 <div class="painel-mun-stats">

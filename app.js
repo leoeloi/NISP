@@ -93,6 +93,7 @@ if (errC) throw errC;
 const { data: alunos, error: errA } = await supabaseClient
   .from('alunos')
   .select('*')
+  .range (0, 100000) // limite alto para evitar cortes
   .order('id', { ascending: false });
 
 if (errA) throw errA;
