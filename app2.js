@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
-async function carregarDados(municipioDoSeletor) {
+async function init() {
     try {
         const { data: municipios, error } = await supabaseClient
             .from('municipios')
@@ -19,7 +19,8 @@ async function carregarDados(municipioDoSeletor) {
     try {
         const {data: cursos, error} = await supabaseClient
             .from('cursos')
-            .select('*');
+            .select('*')
+            .order('id', { ascending: false });
         if (error) throw error;
         console.log('Cursos carregados:', cursos);
     } catch (error) {
@@ -31,11 +32,14 @@ async function carregarDados(municipioDoSeletor) {
             .from('alunos')
             .select('*')
             .order('nome', { ascending: true });
+
         if (error) throw error;
         console.log('Alunos carregados:', alunos);
     } catch (error) {
         console.error('Erro ao carregar alunos:', error.message);
     }
+
+    loadedData
 
      const { alunosConcluintes, error } = await supabaseClient
         .from('alunos')
@@ -139,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const municipioId = event.target.value;
             if (municipioId) {
                 carregarDadosMunicipio(municipioId);
+                carregarDados(municipioId);
             }
         });
     } else {
