@@ -517,6 +517,7 @@ function navegarPara(sectionId) {
     const secaoAlvo = document.getElementById(sectionId);
     if (secaoAlvo) {
         secaoAlvo.style.display = 'block';
+        window.scrollTo(0, 0);
         
         if (sectionId === 'painel-cursos' && typeof popularPainelEdicoes === 'function') {
             popularPainelEdicoes();

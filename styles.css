@@ -537,3 +537,73 @@ nav, main {
     cursor: pointer;
     font-weight: bold;
 }
+
+/* --- AJUSTES PARA DISPOSITIVOS MÓVEIS --- */
+@media (max-width: 768px) {
+    /* Ajuste do container principal */
+    main {
+        width: 95%; /* Ocupa quase toda a largura no celular */
+        margin: 10px auto;
+    }
+
+    /* Ajuste da Navegação/Menu */
+    nav {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
+
+    nav .titulo {
+        margin-bottom: 15px;
+    }
+
+    menu {
+        margin-right: 0;
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* Ajuste dos Gráficos na Home */
+    .container-graficos-topo {
+        flex-direction: column;
+    }
+
+    .bloco-grafico-item {
+        min-width: unset;
+        width: 100%;
+    }
+
+    /* Painel do Município (Grid vira coluna única) */
+    .painel-mun-main {
+        grid-template-columns: 1fr; /* Informações e Stats um sobre o outro */
+    }
+
+    .stats-mun {
+        flex-wrap: wrap; /* Ícones de estatísticas quebram linha se necessário */
+        gap: 10px;
+    }
+
+    .stats-item {
+        flex: 1 1 40%; /* Dois itens por linha no celular */
+    }
+
+    /* Ajuste do Título e Busca de Municípios */
+    #nome-mun {
+        font-size: 20pt;
+    }
+
+    .painel-mun-header select {
+        width: 100%; /* Select ocupa toda a largura disponível */
+    }
+
+    /* Tabelas e Listas */
+    .tabela-container table {
+        font-size: 0.8rem; /* Diminui a fonte da tabela de alunos */
+    }
+
+    /* Imagem da tela de login */
+    #tela-login img {
+        width: 80%;
+        height: auto;
+    }
+}
