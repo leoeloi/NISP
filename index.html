@@ -1,421 +1,203 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NISP - Sistema Integrado (Produção)</title>
-
-  <!-- Libs -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Seu CSS -->
-  <link rel="stylesheet" href="./styles.css" />
-
-  <!-- Seu JS -->
-  <script src="./app.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NISP - Nivelamento Interparticipativo de Segurança Publica</title>
+    <link rel="stylesheet" href="styles2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="app2.js"></script>
 </head>
-
 <body>
 
-  <div id="loading-overlay">
-    <div class="loader"></div>
-    <p id="loading-text" class="pag_carregamento">Conectando ao Banco SQL...</p>
-  </div>
-<div id="login-overlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900">
-  <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
-    <div class="text-center mb-6">
-      <i class="fas fa-shield-alt text-blue-900 text-4xl mb-2"></i>
-      <h2 class="text-2xl font-black text-blue-900">NISP LOGIN</h2>
-      <p class="text-gray-500 text-sm">Acesso restrito</p>
+    <div id="tela-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #152c6e; color: white;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">NISP</h1>
+        <p>Acesso Restrito</p>
     </div>
-    
-    <form id="login-form" class="space-y-4">
-      <div>
-        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">E-mail</label>
-        <input type="email" id="login-email" required class="w-full border p-3 rounded bg-gray-50 focus:ring-2 ring-blue-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Senha</label>
-        <input type="password" id="login-password" required class="w-full border p-3 rounded bg-gray-50 focus:ring-2 ring-blue-500 outline-none">
-      </div>
-      <button type="submit" class="w-full bg-blue-900 text-white font-bold py-3 rounded hover:bg-blue-800 transition shadow-lg">
-        Entrar no Sistema
-      </button>
-      <div id="login-error" class="text-red-600 text-xs text-center font-bold hidden"></div>
-    </form>
-  </div>
+    <div style="background: white; padding: 30px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; width: 300px;">
+        <input type="email" id="login-email" placeholder="E-mail" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="password" id="login-senha" placeholder="Senha" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <button onclick="realizarLogin()" style="padding: 10px; background: #e68f1d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">ENTRAR</button>
+        <p id="erro-login" style="color: red; font-size: 0.8rem; display: none; text-align: center;">Credenciais inválidas.</p>
+    </div>
 </div>
-  <nav class="barra_navegacao_principal">
-    <div class="logo_nome_alinhados">
-      <div class="bloco_icone_logo">
-        <i class="fas fa-shield-alt icone_destaque"></i>
-      </div>
-      <div>
-        <h1 class="titulo_sistema_principal">NISP</h1>
-        <p class="subtitulo_sistema_descricao">Nivelamento Interparticipativo de Segurança Publica</p>
-      </div>
+    <nav>
+        <div class="titulo">
+            <img src="https://i.ibb.co/q3SXVh0g/Guardas-Municipais-Civis-VF-A4-horizontal-4.png" alt="Guardas Municipais Civis VF (A4 (horizontal)) (4)" border="0">
+            <div style="font-size: 26pt; font-weight: bold; margin-right: 5px;">NISP</div>
+            <div>Nivelamento Interparticipativo </br> de Segurança Publica</div>
+        </div>
+    <menu>
+    <div class="dropdown">
+        <div class="dropdown-btn">Menu <i class="fa-solid fa-bars"></i></div>
+        <div class="dropdown-conteudo">
+            <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Início (Dashboard)</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-municipio')">Municípios</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-cursos')">Cursos/Edições</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
+        </div>
     </div>
-
-    <div class="menu_navegacao_itens">
-      <div class="item_navegacao">
-        <span class="texto_item_menu">
-          <i class="fas fa-chart-line"></i> Painel <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
-        </span>
-        <div class="dropdown-menu">
-          <a onclick="navigateTo('page-municipios')" class="dropdown-item">Municípios</a>
-          <a onclick="navigateTo('page-cursos-view')" class="dropdown-item">Cursos (Geral)</a>
-          <a onclick="navigateTo('page-alunos-view')" class="dropdown-item">Alunos (Busca)</a>
-        </div>
-      </div>
-
-      <div class="menu_navegacao_itens">
-      <div class="item_navegacao">
-        <span class="texto_item_menu">
-          <i class="fas fa-database"></i> Controle <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
-        </span>
-        <div class="dropdown-menu">
-          <a onclick="navigateTo('page-controle-cidades')" class="dropdown-item">Controle Cidades</a>
-          <a onclick="navigateTo('page-controle-alunos')" class="dropdown-item">Controle Alunos</a>
-        </div>
-      </div>
-
-      <button onclick="toggleModal('modal-editor')" class="ml-2 bg-blue-800 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded shadow border border-blue-700/50 flex items-center gap-2">
-        <i class="fas fa-cloud-upload-alt text-white"></i>
-        <span class="hidden md:inline text-xs font-bold">Importar CSVs</span>
-      </button>
+    <div class="dropdown">
+        <button class="login-btn" onclick="realizarLogout()" style="background: transparent; border: 1px solid #e68f1d; color: #e68f1d;">
+            <i class="fa-solid fa-right-from-bracket"></i> Sair
+        </button>
     </div>
-  </nav>
-
-  <div class="max-w-[1600px] mx-auto p-4 md:p-6 pb-20">
-
-    <div id="page-municipios" class="page-section active">
-      <div class="cartao_padrao">
-        <div class="header-municipio">
-          <div class="bloco_filtro_translucido">
-            <label class="label_filtro_municipio">Município:</label>
-            <select id="city-selector" onchange="loadCity(this.value)" class="select_municipio">
-              <option value="" disabled selected>Carregando...</option>
-            </select>
-          </div>
-
-          <div>
-            <h1 class="titulo_municipio" id="view-municipio">...</h1>
-            <div class="badge_territorio">
-              Território: <span id="view-territorio">...</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="container-dados-municipio">
-          <div class="coluna_lateral">
-            <div class="card-box">
-              <h3 class="titulo_cartao">Informações</h3>
-              <div class="info-row">
-                <span class="info-label">Possui Guarda?</span>
-                <span id="badge-possui" class="status-badge">...</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Guarda Armada?</span>
-                <span id="badge-armada" class="status-badge">...</span>
-              </div>
-            </div>
-            <div class="stats-grid">
-              
-              <div class="stat-card">
-                <div class="stat-label">Efetivo</div>
-                <div class="stat-value stat-large" id="view-efetivo">...</div>
-              </div>
-
-              <div class="stat-card">
-                <div class="stat-label">População</div>
-                <div class="stat-value stat-medium" id="view-populacao">...</div>
-              </div>
-
-            </div>
-
-              <div class="info-card">
-                <h3 class="titulo_cartao card-title-base">Prefeitura</h3>
-
-                <div class="person-block">
-                  <span class="label-strong">Prefeito(a)</span>
-                  <span id="view-prefeito" class="value-strong">...</span>
-                </div>
-
-                <div class="contact-list contact-list-blue">
-                  <div class="contact-row">
-                    <i class="far fa-envelope icon-blue"></i>
-                    <span class="text-link break-anywhere" id="view-email-pref">...</span>
-                  </div>
-                  <div class="contact-row">
-                    <i class="fas fa-phone icon-blue"></i>
-                    <span class="text-muted-medium" id="view-tel-pref">...</span>
-                  </div>
-                </div>
-
-              <div class="section-divider">
-                <h3 class="titulo_cartao card-title-base">Guarda Municipal</h3>
-
-                <div class="person-block">
-                  <span class="label-strong">Chefe da Guarda</span>
-                  <span id="view-chefe-gm" class="value-strong">...</span>
-                </div>
-
-                <div class="contact-list contact-list-green">
-                  <div class="contact-row">
-                    <i class="far fa-envelope icon-green"></i>
-                    <span class="text-link break-anywhere" id="view-email-gm">...</span>
-                  </div>
-                  <div class="contact-row">
-                    <i class="fas fa-phone icon-green"></i>
-                    <span class="text-muted-medium" id="view-tel-gm">...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-              <div class="card-box">
-              <h3 class="titulo_cartao">Observações</h3>
-              <div id="view-obs-mun" class="text-muted-medium">Nenhuma observação registrada.</div>
-            </div>
-              </div>
-            <div class="col-span-8 container-flex">
+    </menu>
+    </nav>
+    <main>
+        <section id="resumo-geral">
+    <div class="titulo-pagina">Bem vindo ao NISP</div>
     
-            <div class="stats-card">
-              <div class="stat-item">
-                <div class="stat-number" id="view-total-certs">0</div>
-                <div class="stat-label">Certificações</div>
-              </div>
-
-              <div class="stat-item">
-                <div class="stat-number green" id="view-unique-grads">0</div>
-                <div class="stat-label">Alunos Únicos</div>
-              </div>
-
-              <div class="stat-item">
-                <div class="stat-number blue" id="view-coverage-pct">0%</div>
-                <div class="stat-label">Cobertura</div>
-              </div>
+    <div class="container-graficos-topo">
+        <div class="bloco-grafico-item">
+            <div class="titulo-estatistica">Certificações por Edição</div>
+            <div class="canvas-container">
+                <canvas id="grafico-barras-edicao"></canvas>
+            </div>
             </div>
 
-            <div class="courses-section">
-              <h3 class="section-title">Histórico de Cursos</h3>
-              <div id="courses-container" class="courses-list"></div>
+        <div class="bloco-grafico-item">
+            <div class="titulo-estatistica">Certificações por Ano</div>
+            <div class="canvas-container">
+                <canvas id="grafico-barras-anos"></canvas>
             </div>
-
-          </div>
-
         </div>
-      </div>
     </div>
 
-    <div id="page-cursos-view" class="page-section">
-      <div class="cartao_padrao">
-        <h2 class="section-heading">Painel de Cursos por Edição</h2>
-        <div id="global-courses-list" class="space-y-4"></div>
-      </div>
+    <div class="container-progresso-geral">
+        <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
+        <div class="barra-progresso-fundo">
+            <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
+            <span id="texto-progresso-percentual">0%</span>
+        </div>
+        <div class="legenda-progresso">
+            <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+        </div>
     </div>
-
-    <div id="page-alunos-view" class="page-section">
-      <div class="cartao_padrao">
-        <div class="flex justify-between items-center mb-6 pb-4 border-b gap-4">
-          <h2 class="section-heading">Busca de Alunos</h2>
-          <input type="text" id="student-search" onkeyup="filterStudents()" placeholder="Buscar por Nome ou CPF..." class="w-full md:w-1/3 pl-4 py-2 border rounded-full bg-gray-50 focus:border-blue-500 outline-none">
-        </div>
-
-        <div class="table-container border rounded-lg">
-          <table class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-white uppercase bg-blue-900 sticky top-0">
-              <tr>
-                <th class="px-4 py-3">Nome</th>
-                <th class="px-4 py-3">CPF</th>
-                <th class="px-4 py-3">Município</th>
-                <th class="px-4 py-3">Curso</th>
-                <th class="px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody id="global-students-table" class="divide-y divide-gray-100"></tbody>
-          </table>
-        </div>
-        <div class="mt-2 text-xs text-gray-400 text-right" id="student-count">...</div>
-      </div>
-    </div>
-
-    <div id="page-controle-cidades" class="page-section">
-  <div class="cartao_padrao">
-    <h2 class="section-heading">Controle de Participação</h2>
-
-    <!-- Formulário de adição -->
-    <div class="bg-blue-50 p-4 rounded mb-4 border border-blue-100">
-      <form id="add-city-course-form" class="control-form grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
-        <div>
-          <label class="text-xs font-bold text-gray-500">Município</label>
-          <input list="city-datalist" id="cc-municipio" class="w-full border p-2 rounded text-sm" required>
-          <datalist id="city-datalist"></datalist>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Curso</label>
-          <input list="course-datalist" type="text" id="cc-curso" class="w-full border p-2 rounded text-sm" required>
-          <datalist id="course-datalist"></datalist>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Canal de comunicação</label>
-          <input type="text" id="cc-comunicacao" class="w-full border p-2 rounded text-sm" placeholder="Ex: Ofício, Email, WhatsApp">
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Aceitou convite?</label>
-          <select id="cc-ac-convite" class="w-full border p-2 rounded text-sm" required>
-            <option value="" selected disabled>Selecione...</option>
-            <option>Solicitado pelo Município</option>
-            <option>Aguardando resposta</option>
-            <option>Sim</option>
-            <option>Não</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Status</label>
-          <select id="cc-status" class="w-full border p-2 rounded text-sm" required>
-            <option value="" selected disabled>Selecione...</option>
-            <option>Atendido</option>
-            <option>Não Atendido</option>
-            <option>Em Andamento</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Observação</label>
-          <input type="text" id="cc-obs" class="w-full border p-2 rounded text-sm" placeholder="Opcional">
-        </div>
-
-        <button type="button" onclick="addCityControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">
-          Adicionar
-        </button>
-      </form>
-    </div>
-
-    <!-- Filtros -->
-    <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
-      <div class="control-filters grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-        <div>
-          <label class="text-xs font-bold text-gray-500">Filtrar Município</label>
-          <select id="filter-cc-municipio" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"> <option value="">Todos</option></select>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Filtrar Curso</label>
-          <select id="filter-cc-curso" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Filtrar Ano</label>
-          <select id="filter-cc-ano" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-gray-500">Filtrar Status</label>
-          <select id="filter-cc-status" class="w-full border p-2 rounded text-sm" onchange="renderControlCities()"><option value="">Todos</option></select>
-        </div>
-
-        <button type="button" onclick="clearControlCityFilters()" class="bg-slate-800 text-white p-2 rounded font-bold text-sm hover:bg-slate-900">
-          Limpar filtros
-        </button>
-      </div>
-    </div>
-
-    <div class="table-container border rounded-lg">
-      <table class="w-full text-sm text-left text-gray-600 control-table">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
-          <tr>
-            <th class="px-4 py-2">Município</th>
-            <th class="px-4 py-2">Curso</th>
-            <th class="px-4 py-2">Canal</th>
-            <th class="px-4 py-2">Aceitou?</th>
-            <th class="px-4 py-2">Status</th>
-            <th class="px-4 py-2">Observação</th>
-            <th class="px-4 py-2 text-center">Ações</th>
-          </tr>
-        </thead>
-        <tbody id="control-cities-table" class="divide-y divide-gray-100"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-    <div id="page-controle-alunos" class="page-section">
-      <div class="cartao_padrao">
-        <h2 class="section-heading">Controle de Alunos</h2>
-        <div class="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
-          <form id="add-student-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-            <div>
-              <label class="text-xs font-bold text-gray-500">Município</label>
-              <input list="city-datalist-st" id="ca-municipio" class="w-full border p-2 rounded text-sm" required>
-              <datalist id="city-datalist-st"></datalist>
+</section>
+        <section id="painel-municipio" >
+            <div class="painel-mun-header">
+                <div class="busca-mun">
+                    <div style="font-size: small;">MUNICÍPIOS: </div>
+                    <select name="municipio" id="municipio-select">
+                    </select>
+                </div>
+            <div id="nome-mun">-</div>
+            <div class="territorio">
+                <div>Território: </div>
+                <div id="territorio-mun">-</div>
             </div>
-            <div>
-              <label class="text-xs font-bold text-gray-500">Curso</label>
-              <input type="text" id="ca-curso" class="w-full border p-2 rounded text-sm" required>
             </div>
-            <div>
-              <label class="text-xs font-bold text-gray-500">Nome</label>
-              <input type="text" id="ca-nome" class="w-full border p-2 rounded text-sm" required>
+            <div class="painel-mun-main">
+                <div class="painel-mun-info">
+                    <div class="titulo-pagina">Informações</div>
+                    <div class="info-guarda">
+                        <div>
+                            <div>Possui Guarda?</div>
+                            <div id="possui-guarda"> <i class="fa-regular fa-circle-check"></i>-</div>
+                        </div>
+                        <div>
+                            <div>Guarda Armada?</div>
+                            <div id="guarda-armada"><i class="fa-regular fa-circle-xmark"></i>-</div>
+                        </div>
+                    </div>
+                    
+                    <div id="info-efetivo">
+                        <div>EFETIVO</div>
+                        <div id="efetivo" style="font-weight: bold; font-size: 20pt;color: black;">-</div>
+                    </div>
+                    <div class="info-populacao">
+                            <div>POPULAÇÃO</div>
+                            <div id="populacao" style="font-weight: bold; font-size: 20pt; color: black;">-</div>
+                    </div>
+                    
+                    <div class="contato-mun">
+                        <div>Prefeitura</div>
+                        <div>Prefeito: </div>
+                        <div id="prefeito">-</div>
+                        <div> 
+                            <i class="fa-regular fa-envelope icon-contato"></i>
+                            <div id="email-pref">-</div>
+                        </div>
+                        <div>
+                            <i class="fa-solid fa-phone icon-contato"></i>
+                            <div id="tel-pref">-</div>
+                        </div>    
+                        <hr>
+                        <div>Guarda Municipal</div>
+                        <div>Chefe da Guarda: </div>
+                        <div id="chefe-guarda">-</div>
+                        <div>
+                            <i class="fa-regular fa-envelope icon-contato"></i>
+                            <div id="email-gm">-</div>
+                        </div>
+                        <div>
+                            <i class="fa-solid fa-phone icon-contato"></i>
+                            <div id="tel-gm">-</div>
+                        </div>
+                    </div>
+                    <div class="info-obs">
+                        <div>Observações</div>
+                        <div id="observacoes">-</div>
+                    </div>
+                </div>
+                <div class="painel-mun-stats">
+                    <div class="stats-mun">
+                        <div class="stats-item">
+                            <div class="stats-valor" id="certificacoes">-</div>
+                            <div class="stats-titulo">CERTIFICADOS EMITIDOS</div>
+                        </div>
+                        <div class="stats-item">
+                            <div class="stats-valor" id="alunos-unicos">-</div>
+                            <div class="stats-titulo">ALUNOS</div>
+                        </div>
+                        <div class="stats-item">
+                            <div class="stats-valor" id="cobertura">-</div>
+                            <div class="stats-titulo">COBERTURA DO EFETIVO DA GCM</div>
+                        </div>
+                    </div>
+                    <div class="titulo-cursos">Edições Participadas</div>
+                    <div id="lista-cursos-container">
+                </div>
+                </div>
+            </section>
+        <section id="painel-cursos">
+            <div class="titulo-pagina">Painel de Cursos por Edição</div>
+            <div id="lista-cursos-edicoes" class="container-edicoes">
+                </div>
+        </section>
+        <section id="painel-busca-alunos">
+            <div class="titulo-pagina">Busca de Alunos</div>
+            
+            <div style="padding: 20px;">
+                <div class="busca-mun" style="width: 100%; box-sizing: border-box; margin-bottom: 20px;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: white; margin-right: 10px;"></i>
+                    <input type="text" id="input-busca-aluno" placeholder="Buscar por nome ou CPF..." 
+                        style="width: 100%; background: transparent; border: none; color: white; outline: none; font-size: 11pt;">
+                </div>
+
+                <div class="tabela-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                        <thead style="background: #1e3c99; color: white; text-align: left;">
+                            <tr>
+                                <th style="padding: 12px;">Nome</th>
+                                <th style="padding: 12px;">CPF</th>
+                                <th style="padding: 12px;">Edição</th>
+                                <th style="padding: 12px;">Município</th>
+                                <th style="padding: 12px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo-alunos">
+                            </tbody>
+                    </table>
+                </div>
             </div>
-            <div>
-              <label class="text-xs font-bold text-gray-500">CPF</label>
-              <input type="text" id="ca-cpf" class="w-full border p-2 rounded text-sm">
-            </div>
-            <button type="button" onclick="addStudentControl()" class="bg-green-600 text-white p-2 rounded font-bold text-sm hover:bg-green-700">Matricular</button>
-          </form>
-        </div>
-
-        <input type="text" id="control-student-search" onkeyup="renderControlStudents()" placeholder="Filtrar tabela..." class="w-full border p-2 rounded text-sm mb-2">
-
-        <div class="table-container border rounded-lg">
-          <table class="w-full text-sm text-left text-gray-600">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
-              <tr>
-                <th class="px-4 py-2">Município</th>
-                <th class="px-4 py-2">Curso</th>
-                <th class="px-4 py-2">Aluno</th>
-                <th class="px-4 py-2">CPF</th>
-                <th class="px-4 py-2">Status</th>
-                <th class="px-4 py-2 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="control-students-table" class="divide-y divide-gray-100"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <div id="modal-editor" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
-    <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-    <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded shadow-lg z-50 p-6">
-      <div class="flex justify-between items-center pb-3 border-b mb-4">
-        <h3 class="text-xl font-bold text-gray-800">Importação de Dados (Admin)</h3>
-        <div class="cursor-pointer" onclick="toggleModal('modal-editor')"><i class="fas fa-times"></i></div>
-      </div>
-      <div class="bg-red-50 border border-red-200 p-4 rounded text-sm text-red-800 mb-4">
-        <p class="font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Atenção</p>
-        <p>A importação irá SUBSTITUIR os dados no banco. Certifique-se que os CSVs estão corretos.</p>
-      </div>
-      <div class="grid grid-cols-1 gap-4 mb-4">
-        <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">1. Municípios</label><input type="file" id="file-municipios" accept=".csv" class="w-full text-sm"></div>
-        <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">2. Cursos</label><input type="file" id="file-cidades" accept=".csv" class="w-full text-sm"></div>
-        <div class="border p-3 rounded bg-gray-50"><label class="block text-xs font-bold mb-1">3. Alunos</label><input type="file" id="file-alunos" accept=".csv" class="w-full text-sm"></div>
-      </div>
-      <div class="text-right">
-        <button onclick="processAndUploadFiles()" class="px-6 py-2 bg-blue-600 rounded text-white font-bold hover:bg-blue-700 shadow">Processar e Enviar</button>
-      </div>
-    </div>
-  </div>
-
+        </section>
+        <section id="gestao-usuarios"></section>
+    </main>
 </body>
 </html>

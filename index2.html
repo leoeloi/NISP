@@ -7,50 +7,78 @@
     <link rel="stylesheet" href="styles2.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="app2.js"></script>
 </head>
 <body>
+
+    <div id="tela-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #152c6e; color: white;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">NISP</h1>
+        <p>Acesso Restrito</p>
+    </div>
+    <div style="background: white; padding: 30px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; width: 300px;">
+        <input type="email" id="login-email" placeholder="E-mail" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="password" id="login-senha" placeholder="Senha" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <button onclick="realizarLogin()" style="padding: 10px; background: #e68f1d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">ENTRAR</button>
+        <p id="erro-login" style="color: red; font-size: 0.8rem; display: none; text-align: center;">Credenciais inválidas.</p>
+    </div>
+</div>
     <nav>
         <div class="titulo">
+            <img src="https://i.ibb.co/q3SXVh0g/Guardas-Municipais-Civis-VF-A4-horizontal-4.png" alt="Guardas Municipais Civis VF (A4 (horizontal)) (4)" border="0">
             <div style="font-size: 26pt; font-weight: bold; margin-right: 5px;">NISP</div>
             <div>Nivelamento Interparticipativo </br> de Segurança Publica</div>
         </div>
-            <menu>
-            <div class="dropdown">
-                <div class="dropdown-btn">Painel ▼</div>
-                <div class="dropdown-conteudo">
-                    <a href="">Municipios</a>
-                    <a href="">Cursos</a>
-                    <a href="">Alunos</a>
-                    <a href="">Graficos</a>
-                </div>
-            </div>
-            <div class="dropdown">
-                <div class="dropdown-btn">Controle ▼</div>
-                <div class="dropdown-conteudo">
-                    <a href="">Municipios</a>
-                    <a href="">Alunos</a>
-                </div>
-            </div>
-            <div class="dropdown">
-                <div class="dropdown-btn">Gestão ▼</div>
-                <div class="dropdown-conteudo">
-                    <a href="">Usuarios</a>
-                </div>
-            </div>
-            <button class="login-btn">Login</button>
-            </menu>
+    <menu>
+    <div class="dropdown">
+        <div class="dropdown-btn">Menu <i class="fa-solid fa-bars"></i></div>
+        <div class="dropdown-conteudo">
+            <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Início (Dashboard)</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-municipio')">Municípios</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-cursos')">Cursos/Edições</a>
+            <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
+        </div>
+    </div>
+    <div class="dropdown">
+        <button class="login-btn" onclick="realizarLogout()" style="background: transparent; border: 1px solid #e68f1d; color: #e68f1d;">
+            <i class="fa-solid fa-right-from-bracket"></i> Sair
+        </button>
+    </div>
+    </menu>
     </nav>
     <main>
-        <section id="home">
-            <div class="titulo-pagina">Bem-vindo ao NISP</div>
-            <div class="descricao-pagina">
-                O NISP (Nivelamento Interparticipativo de Segurança Pública) é uma plataforma dedicada a aprimorar a capacitação e o desenvolvimento das Guardas Municipais em todo o país. Nosso objetivo é fornecer treinamentos de alta qualidade, promover a troca de conhecimentos entre municípios e fortalecer a segurança pública local.
+        <section id="resumo-geral">
+    <div class="titulo-pagina">Bem vindo ao NISP</div>
+    
+    <div class="container-graficos-topo">
+        <div class="bloco-grafico-item">
+            <div class="titulo-estatistica">Certificações por Edição</div>
+            <div class="canvas-container">
+                <canvas id="grafico-barras-edicao"></canvas>
             </div>
-            <div class="descricao-pagina">
-                Explore nossos recursos, participe dos cursos oferecidos e acompanhe o progresso da sua Guarda Municipal. Juntos, podemos construir um ambiente mais seguro para nossas comunidades.
             </div>
-        </section>
+
+        <div class="bloco-grafico-item">
+            <div class="titulo-estatistica">Certificações por Ano</div>
+            <div class="canvas-container">
+                <canvas id="grafico-barras-anos"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-progresso-geral">
+        <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
+        <div class="barra-progresso-fundo">
+            <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
+            <span id="texto-progresso-percentual">0%</span>
+        </div>
+        <div class="legenda-progresso">
+            <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+        </div>
+    </div>
+</section>
         <section id="painel-municipio" >
             <div class="painel-mun-header">
                 <div class="busca-mun">
@@ -120,7 +148,7 @@
                 <div class="painel-mun-stats">
                     <div class="stats-mun">
                         <div class="stats-item">
-                            <div class="stats-valor" id="certificacoes">25</div>
+                            <div class="stats-valor" id="certificacoes">-</div>
                             <div class="stats-titulo">CERTIFICADOS EMITIDOS</div>
                         </div>
                         <div class="stats-item">
@@ -128,20 +156,47 @@
                             <div class="stats-titulo">ALUNOS</div>
                         </div>
                         <div class="stats-item">
-                            <div class="stats-valor" id="cobertura">15%</div>
+                            <div class="stats-valor" id="cobertura">-</div>
                             <div class="stats-titulo">COBERTURA DO EFETIVO DA GCM</div>
                         </div>
                     </div>
+                    <div class="titulo-cursos">Edições Participadas</div>
+                    <div id="lista-cursos-container">
+                </div>
                 </div>
             </section>
-        <section id="painel-cursos" style="display: none;">
-            <div class="titulo-pagina">Edições Realizadas</div>
-            <div id="lista-cursos"></div>
+        <section id="painel-cursos">
+            <div class="titulo-pagina">Painel de Cursos por Edição</div>
+            <div id="lista-cursos-edicoes" class="container-edicoes">
+                </div>
         </section>
-        <section id="painel-alunos"></section>
-        <section id="painel-graficos"></section>
-        <section id="controle-municipio"></section>
-        <section id="controle-alunos"></section>
+        <section id="painel-busca-alunos">
+            <div class="titulo-pagina">Busca de Alunos</div>
+            
+            <div style="padding: 20px;">
+                <div class="busca-mun" style="width: 100%; box-sizing: border-box; margin-bottom: 20px;">
+                    <i class="fa-solid fa-magnifying-glass" style="color: white; margin-right: 10px;"></i>
+                    <input type="text" id="input-busca-aluno" placeholder="Buscar por nome ou CPF..." 
+                        style="width: 100%; background: transparent; border: none; color: white; outline: none; font-size: 11pt;">
+                </div>
+
+                <div class="tabela-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                        <thead style="background: #1e3c99; color: white; text-align: left;">
+                            <tr>
+                                <th style="padding: 12px;">Nome</th>
+                                <th style="padding: 12px;">CPF</th>
+                                <th style="padding: 12px;">Edição</th>
+                                <th style="padding: 12px;">Município</th>
+                                <th style="padding: 12px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo-alunos">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
         <section id="gestao-usuarios"></section>
     </main>
 </body>

@@ -15,13 +15,13 @@ nav {
     align-items: center;
     padding: 10px;
     margin-bottom: 20px;
-    background-color: #152c6e;
+    background-color: #004AAD;
 }
 
 menu {
     list-style-type: none;
     margin: 0;
-    margin-right: 20px;
+    margin-right: 100px;
     display: flex;
     gap: 15px;
     align-items: center;
@@ -37,12 +37,30 @@ main {
     overflow: hidden;
 }
 
+#painel-municipio, 
+#painel-cursos, 
+#painel-alunos, 
+#painel-graficos, 
+#controle-municipio, 
+#controle-alunos, 
+#gestao-usuarios {
+    display: none;
+}
+
+#resumo-geral {
+    display: block;
+}
 
 
 .titulo {
     display: flex;
     align-items: center;
     color: white;
+}
+
+.titulo img {
+    height: 80px;
+    margin-right: 15px;
 }
 
 .dropdown {
@@ -86,17 +104,6 @@ main {
     display: block;
 }
 
-.login-btn {
-    padding: 10px 20px;
-    border: solid 1px #ffffff;
-    cursor: pointer;
-    background-color: #1e3c99;
-    color: white;
-}
-
-.login-btn:hover {
-    background-color: #6178aa;
-}
 
 .painel-mun-header {
     align-items: center;
@@ -293,4 +300,212 @@ main {
     font-weight: bold;
     margin-bottom: 10px;
     margin-top: 5px;
+}
+
+.titulo-cursos {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #152c6e;
+    padding: 20px;
+}
+
+#resumo-geral {
+    padding: 25px;
+    background-color: #fcfcfc;
+}
+
+.container-graficos-topo {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.bloco-grafico-item {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    flex: 1;
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    text-align: center;
+    position: relative;
+}
+
+.canvas-container {
+    height: 250px;
+    margin-top: 15px;
+}
+
+.bloco-grafico-item:last-child .canvas-container {
+    margin-top: 55px; /* Ajuste este valor (ex: 50px a 70px) para alinhar com o 94% */
+}
+
+
+.legenda-valor {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #1e3c99;
+    margin-top: 10px;
+}
+
+/* Estilos da Barra de Progresso */
+.container-progresso-geral {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.barra-progresso-fundo {
+    width: 100%;
+    height: 35px;
+    background: #e9ecef;
+    border-radius: 50px;
+    margin: 15px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.barra-progresso-preenchimento {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #1e3c99, #E4AD36);
+    transition: width 1s ease-in-out;
+}
+
+#texto-progresso-percentual {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
+    color: #1a3a5a;
+}
+
+.legenda-progresso {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.titulo-estatistica {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #152c6e;
+}
+
+
+/* Container principal das edições */
+.container-edicoes {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* Card de cada Edição (ex: NISP I - AVANÇADO) */
+.card-edicao {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Estilo do Detalhes/Accordion */
+
+.card-edicao-expansivel {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.header-edicao-clicavel {
+    padding: 15px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    list-style: none; /* Remove a seta padrão do navegador */
+    background-color: #fdfdfd;
+}
+
+.header-edicao-clicavel::-webkit-details-marker {
+    display: none; /* Remove seta no Chrome/Safari */
+}
+
+.info-titulo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.info-titulo h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #152c6e;
+}
+
+.seta-expansao {
+    transition: transform 0.3s ease;
+    color: #1e3c99;
+}
+
+/* Gira a seta quando o accordion abre */
+.card-edicao-expansivel[open] .seta-expansao {
+    transform: rotate(90deg);
+}
+
+.badge-contador {
+    background: #1e3c99;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Novo estilo para os itens clicáveis dos municípios */
+.item-municipio-link {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    padding: 12px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.item-municipio-link:hover {
+    background: #eef2ff;
+    border-color: #1e3c99;
+    transform: translateY(-2px);
+}
+
+.item-municipio-link:active {
+    transform: translateY(0);
+}
+
+.grid-municipios-participantes {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-top: 1px solid #eee;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+#painel-busca-alunos {
+    display: none;
+    background-color: #fcfcfc;
+}
+
+
+#input-busca-aluno::placeholder {
+    color: #acc1ff;
 }
