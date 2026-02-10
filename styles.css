@@ -587,7 +587,6 @@ nav, main {
         flex: 1 1 40%; /* Dois itens por linha no celular */
     }
 
-    /* Ajuste do Título e Busca de Municípios */
     #nome-mun {
         font-size: 20pt;
     }
@@ -596,12 +595,10 @@ nav, main {
         width: 100%; /* Select ocupa toda a largura disponível */
     }
 
-    /* Tabelas e Listas */
     .tabela-container table {
         font-size: 0.8rem; /* Diminui a fonte da tabela de alunos */
     }
 
-    /* Imagem da tela de login */
     #tela-login img {
         width: 80%;
         height: auto;
