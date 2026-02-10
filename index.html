@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NISP - Nivelamento Interparticipativo de Segurança Publica</title>
-    <link rel="stylesheet" href="styles2.css">
+    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <script src="app2.js"></script>
+    <script src="app.js"></script>
 </head>
 <body>
 
     <div id="tela-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #152c6e; color: white;">
     <div style="text-align: center; margin-bottom: 20px;">
+      <img src="https://i.ibb.co/q3SXVh0g/Guardas-Municipais-Civis-VF-A4-horizontal-4.png" alt="Guardas Municipais Civis VF (A4 (horizontal)) (4)" border="0">
         <h1 style="margin: 0;">NISP</h1>
         <p>Acesso Restrito</p>
     </div>
@@ -41,15 +42,14 @@
             <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
         </div>
     </div>
-    <div class="dropdown">
-        <button class="login-btn" onclick="realizarLogout()" style="background: transparent; border: 1px solid #e68f1d; color: #e68f1d;">
+        <button class="logout-btn" onclick="realizarLogout()" >
             <i class="fa-solid fa-right-from-bracket"></i> Sair
         </button>
     </div>
     </menu>
     </nav>
     <main>
-        <section id="resumo-geral">
+    <section id="resumo-geral">
     <div class="titulo-pagina">Bem vindo ao NISP</div>
     
     <div class="container-graficos-topo">
@@ -78,7 +78,8 @@
             <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
         </div>
     </div>
-</section>
+    <img src="https://i.ibb.co/wFY81kqk/Calendario-NISP.png" alt="Calendario NISP" border="0">
+    </section>
         <section id="painel-municipio" >
             <div class="painel-mun-header">
                 <div class="busca-mun">

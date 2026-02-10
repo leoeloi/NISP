@@ -37,6 +37,19 @@ main {
     overflow: hidden;
 }
 
+nav, main {
+    display: none;
+}
+
+#tela-login {
+    display: flex; 
+}
+
+#tela-login img {
+    width: 400px;
+    margin-bottom: 20px;
+}
+
 #painel-municipio, 
 #painel-cursos, 
 #painel-alunos, 
@@ -314,6 +327,11 @@ main {
     background-color: #fcfcfc;
 }
 
+#resumo-geral img {
+    width: 100%;
+    margin-top: 20px;
+}
+
 .container-graficos-topo {
     display: flex;
     gap: 20px;
@@ -508,4 +526,14 @@ main {
 
 #input-busca-aluno::placeholder {
     color: #acc1ff;
+}
+
+.logout-btn{
+    background-color: #E4AD36;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
 }

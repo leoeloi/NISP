@@ -27,11 +27,18 @@ async function realizarLogin() {
 }
 
 function mostrarSistema() {
-    document.getElementById('tela-login').style.display = 'none';
-    document.getElementById('nav-principal').style.display = 'flex';
-    document.getElementById('conteudo-principal').style.display = 'block';
+    // Oculta a tela de login
+    const telaLogin = document.getElementById('tela-login');
+    if (telaLogin) telaLogin.style.display = 'none';
     
-    // Inicia o carregamento dos dados após o login
+    // Exibe a navegação e o conteúdo principal
+    const nav = document.querySelector('nav');
+    const main = document.querySelector('main');
+    
+    if (nav) nav.style.display = 'flex';
+    if (main) main.style.display = 'block';
+    
+    // Inicia o carregamento dos dados
     init(); 
 }
 
@@ -54,7 +61,7 @@ async function realizarLogout() {
         if (error) throw error;
 
         // Recarrega a página para limpar o estado global e voltar para a tela de login
-        window.location.reload(); 
+        window.location.reload();
         
     } catch (error) {
         console.error("Erro ao sair:", error.message);
@@ -527,7 +534,6 @@ function navegarPara(sectionId) {
 document.addEventListener('DOMContentLoaded', () => {
     init();
 
-    // Listener para o select de municípios
     const select = document.getElementById('municipio-select');
     if (select) {
         select.addEventListener('change', (e) => {
@@ -536,7 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Listener para a busca de alunos (CORRIGIDO)
     const inputBusca = document.getElementById('input-busca-aluno');
     if (inputBusca) {
         inputBusca.addEventListener('input', (e) => {
