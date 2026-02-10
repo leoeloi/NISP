@@ -222,7 +222,7 @@ function popularListaCursos(cursos) {
                 <div style="background: #fdfdfd; padding: 15px; border-bottom: 1px solid #eee;">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <h3 style="margin: 0; color: #333; font-size: 1.1rem; text-transform: uppercase;">${nomeDoCurso}</h3>
-                        <span style="font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 5px; background: #e9ecef; color: #495057;">
+                        <span style="font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 5px; background: #1361af; color: #ffffff;">
                             ${(curso.status || 'N/A').toUpperCase()}
                         </span>
                     </div>
