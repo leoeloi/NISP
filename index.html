@@ -6,16 +6,23 @@
     <title>NISP - Nivelamento Interparticipativo de Segurança Publica</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="app.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
     <div id="tela-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #152c6e; color: white;">
-    <div style="text-align: center; margin-bottom: 20px;">
+        <div style="display: flex; justify-self: left; ">GOVERNO DO ESTADO DA BAHIA <br>
+        SECRETARIA DA SEGURANÇA PÚBLICA <br>
+        SUPERINTENDÊNCIA DE GESTÃO INTEGRADA DA AÇÃO POLICIAL <br>
+        ESCOLA DE GOVERNO DA SEGURANÇA PÚBLICA</div>
+    
+        <div style="text-align: center; margin-bottom: 20px;">
       <img src="https://i.ibb.co/q3SXVh0g/Guardas-Municipais-Civis-VF-A4-horizontal-4.png" alt="Guardas Municipais Civis VF (A4 (horizontal)) (4)" border="0">
         <h1 style="margin: 0;">NISP</h1>
         <p>Acesso Restrito</p>
@@ -26,6 +33,7 @@
         <button onclick="realizarLogin()" style="padding: 10px; background: #e68f1d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">ENTRAR</button>
         <p id="erro-login" style="color: red; font-size: 0.8rem; display: none; text-align: center;">Credenciais inválidas.</p>
     </div>
+
 </div>
     <nav>
         <div class="titulo">
@@ -33,54 +41,73 @@
             <div style="font-size: 26pt; font-weight: bold; margin-right: 5px;">NISP</div>
             <div>Nivelamento Interparticipativo </br> de Segurança Publica</div>
         </div>
-    <menu>
-    <div class="dropdown">
-        <div class="dropdown-btn">Menu <i class="fa-solid fa-bars"></i></div>
-        <div class="dropdown-conteudo">
-            <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Início (Dashboard)</a>
+        <menu id="menu-navegacao">
+        <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Início</a>
+        <a href="javascript:void(0)" onclick="navegarPara('sobre-nisp')">Sobre o NISP</a>
+        
+        <div id="area-restrita-menu" style="display: none; gap: 15px; align-items: center;">
             <a href="javascript:void(0)" onclick="navegarPara('painel-municipio')">Municípios</a>
             <a href="javascript:void(0)" onclick="navegarPara('painel-cursos')">Cursos/Edições</a>
             <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
+            <button class="logout-btn" onclick="realizarLogout()">
+                <i class="fa-solid fa-right-from-bracket"></i> Sair
+            </button>
         </div>
-    </div>
-        <button class="logout-btn" onclick="realizarLogout()" >
-            <i class="fa-solid fa-right-from-bracket"></i> Sair
+        
+        <button id="btn-login-abrir" class="logout-btn" onclick="document.getElementById('tela-login').style.display='flex'">
+            Acesso Restrito
         </button>
-    </div>
     </menu>
     </nav>
     <main>
-    <section id="resumo-geral">
-    <div class="titulo-pagina">Bem vindo ao NISP</div>
-    
-    <div class="container-graficos-topo">
-        <div class="bloco-grafico-item">
-            <div class="titulo-estatistica">Certificações por Edição</div>
-            <div class="canvas-container">
-                <canvas id="grafico-barras-edicao"></canvas>
-            </div>
-            </div>
+        <section id="resumo-geral" style="display: none;">
+        <div class="titulo-pagina">Bem vindo ao NISP</div>
+        
+        <div class="container-graficos-topo">
+            <div class="bloco-grafico-item">
+                <div class="titulo-estatistica">Certificações por Edição</div>
+                <div class="canvas-container">
+                    <canvas id="grafico-barras-edicao"></canvas>
+                </div>
+                </div>
 
-        <div class="bloco-grafico-item">
-            <div class="titulo-estatistica">Certificações por Ano</div>
-            <div class="canvas-container">
-                <canvas id="grafico-barras-anos"></canvas>
+            <div class="bloco-grafico-item">
+                <div class="titulo-estatistica">Certificações por Ano</div>
+                <div class="canvas-container">
+                    <canvas id="grafico-barras-anos"></canvas>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="container-progresso-geral">
-        <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
-        <div class="barra-progresso-fundo">
-            <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
-            <span id="texto-progresso-percentual">0%</span>
+        <div class="container-progresso-geral">
+            <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
+            <div class="barra-progresso-fundo">
+                <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
+                <span id="texto-progresso-percentual">0%</span>
+            </div>
+            <div class="legenda-progresso">
+                <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+            </div>
         </div>
-        <div class="legenda-progresso">
-            <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+        <img src="https://i.ibb.co/wFY81kqk/Calendario-NISP.png" alt="Calendario NISP" border="0">
+        </section>
+        <section id="sobre-nisp">
+            <div class="swiper mySwiperNisp">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide"><img src="https://i.ibb.co/jkTZXDMZ/1.png" alt="1" border="0"></div>
+            <div class="swiper-slide"><img src="https://i.ibb.co/CszzNQtc/2.png" alt="2" border="0"></div>
+            <div class="swiper-slide"><img src="https://i.ibb.co/F4rmRyDQ/3.png" alt="3" border="0"></div>
+            <div class="swiper-slide"><img src="https://i.ibb.co/Tj6g258/4.png" alt="4" border="0"></div>
         </div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-pagination"></div>
     </div>
-    <img src="https://i.ibb.co/wFY81kqk/Calendario-NISP.png" alt="Calendario NISP" border="0">
-    </section>
+        <div class="titulo-pagina">Sobre o NISP</div>
+        <div class="container-sobre">
+            <p>O NISP (Nivelamento Interparticipativo de Segurança Pública) é um programa de capacitação e nivelamento voltado para as Guardas Municipais do estado da Bahia. O objetivo do NISP é promover a qualificação dos profissionais das Guardas Municipais, proporcionando treinamentos e cursos que visam aprimorar suas habilidades e conhecimentos na área de segurança pública.</p>
+            <p>O programa é desenvolvido em parceria entre a Secretaria da Segurança Pública da Bahia, a Superintendência de Gestão Integrada da Ação Policial e a Escola de Governo da Segurança Pública. O NISP busca fortalecer as Guardas Municipais, promovendo a troca de experiências e o desenvolvimento de competências essenciais para o desempenho eficiente das atividades de segurança pública nos municípios baianos.</p>
+        </section>
         <section id="painel-municipio" >
             <div class="painel-mun-header">
                 <div class="busca-mun">
@@ -166,7 +193,7 @@
                     <div id="lista-cursos-container">
                 </div>
                 </div>
-            </section>
+        </section>
         <section id="painel-cursos">
             <div class="titulo-pagina">Painel de Cursos por Edição</div>
             <div id="lista-cursos-edicoes" class="container-edicoes">

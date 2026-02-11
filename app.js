@@ -27,26 +27,37 @@ async function realizarLogin() {
 }
 
 function mostrarSistema() {
-    // Oculta a tela de login
+    // Oculta a tela de login (o modal/overlay)
     const telaLogin = document.getElementById('tela-login');
     if (telaLogin) telaLogin.style.display = 'none';
     
-    // Exibe a navegação e o conteúdo principal
-    const nav = document.querySelector('nav');
-    const main = document.querySelector('main');
+    // Exibe a parte restrita do menu
+    const areaRestrita = document.getElementById('area-restrita-menu');
+    if (areaRestrita) areaRestrita.style.display = 'flex';
     
-    if (nav) nav.style.display = 'flex';
-    if (main) main.style.display = 'block';
+    // Oculta o botão de "Entrar" já que já logou
+    const btnLoginAbrir = document.getElementById('btn-login-abrir');
+    if (btnLoginAbrir) btnLoginAbrir.style.display = 'none';
     
-    // Inicia o carregamento dos dados
+    // Carrega os dados do Supabase
     init(); 
 }
 
-// Opcional: Verificar se o usuário já está logado ao carregar a página
 async function verificarSessao() {
     const { data: { session } } = await supabaseClient.auth.getSession();
+    
     if (session) {
+        // Se estiver logado, libera tudo automaticamente
         mostrarSistema();
+    } else {
+        // Se NÃO estiver logado, garante que a tela de login esteja oculta
+        // e que apenas as abas públicas funcionem.
+        document.getElementById('tela-login').style.display = 'none';
+        document.getElementById('area-restrita-menu').style.display = 'none';
+        document.getElementById('btn-login-abrir').style.display = 'block';
+        
+        // Garante que comece na aba pública
+        navegarPara('resumo-geral');
     }
 }
 
@@ -55,18 +66,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function realizarLogout() {
-    try {
-        const { error } = await supabaseClient.auth.signOut();
-        
-        if (error) throw error;
-
-        // Recarrega a página para limpar o estado global e voltar para a tela de login
-        window.location.reload();
-        
-    } catch (error) {
-        console.error("Erro ao sair:", error.message);
-        alert("Não foi possível encerrar a sessão.");
-    }
+    await supabaseClient.auth.signOut();
+    
+    // 1. Esconde os itens privados do menu
+    document.getElementById('area-restrita-menu').style.display = 'none';
+    
+    // 2. Mostra o botão de login novamente
+    document.getElementById('btn-login-abrir').style.display = 'block';
+    
+    navegarPara('resumo-geral');
+    
+    // 4. Limpa dados sensíveis da memória se necessário
+    loadedData = {};
+    listaGlobalAlunos = [];
+    
+    console.log("Usuário deslogado. Mantendo acesso público.");
 }
 
 async function init() {
@@ -501,6 +515,7 @@ function navegarPara(sectionId) {
     // 1. Lista de todos os IDs de seções que você tem no index2.html
     const secoes = [
         'resumo-geral',
+        'sobre-nisp',
         'painel-municipio',
         'painel-cursos',
         'painel-busca-alunos',
@@ -531,6 +546,30 @@ function navegarPara(sectionId) {
     // 4. Fecha qualquer dropdown aberto (opcional, para melhor UX)
     console.log(`Navegou para: ${sectionId}`);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Mesmo sem login, inicializamos o que for público se necessário
+    // Mas o init() completo deve rodar preferencialmente após o login para economizar requests
+    verificarSessao();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+      const swiper = new Swiper('.mySwiperNisp', {
+          loop: true,
+          autoplay: {
+              delay: 4000,
+              disableOnInteraction: false,
+          },
+          pagination: {
+              el: '.swiper-pagination',
+              clickable: true,
+          },
+          navigation: {
+              nextEl: '.swiper-button-next',
+              prevEl: '.swiper-button-prev',
+          },
+      });
+  });
 
 document.addEventListener('DOMContentLoaded', () => {
     init();
