@@ -146,6 +146,8 @@ async function init() {
     atualizarEstatisticasGlobais();
     popularPainelEdicoes();
     prepararListaGlobalAlunos();
+    processarCidadesAtendidas();
+
 }
 
 async function carregarDadosMunicipio(municipioId) {
@@ -287,7 +289,7 @@ function atualizarEstatisticasGlobais() {
     
     munComGuarda.forEach(mun => {
         mun.cursos.forEach(curso => {
-            const identificador = `${curso.curso} - ${curso.ano || 'S/D'}`;
+            const identificador = `${curso.curso}`;
             const concluintes = curso.alunos.filter(a => (a.status || '').toLowerCase().includes('conclu')).length;
 
             if (concluintes === 0) return; // Pula cursos sem concluintes
@@ -485,6 +487,49 @@ function prepararListaGlobalAlunos() {
         });
     });
     renderizarTabelaAlunos(listaGlobalAlunos);
+}
+
+function processarCidadesAtendidas() {
+const ul = document.getElementById('cidades-atendidas-ul');
+    if (!ul) return;
+
+    // 1. Criar um Set para armazenar IDs únicos de municípios presentes na tabela cursos
+    const idsMunicipiosAtendidos = new Set();
+    
+    Object.values(loadedData).forEach(mun => {
+        if (mun.cursos && mun.cursos.length > 0) {
+            const temCursoAtendido = mun.cursos.some(curso => curso.status === "Atendido");
+                if (temCursoAtendido){
+                    idsMunicipiosAtendidos.add(mun.id);
+                }
+        }
+    });
+
+    // 2. Converter IDs em nomes e ordenar
+    const nomesCidades = Array.from(idsMunicipiosAtendidos)
+        .map(id => loadedData[id].nome)
+        .sort();
+
+    // 3. Limpar e popular a UL
+    ul.innerHTML = '';
+
+    if (nomesCidades.length === 0) {
+        ul.innerHTML = '<li>Nenhuma cidade encontrada.</li>';
+        return;
+    }
+
+    nomesCidades.forEach(cidade => {
+        const li = document.createElement('li');
+        li.style.display = "flex";
+        li.style.alignItems = "center";
+        li.style.padding = "8px 0";
+        li.style.borderBottom = "1px solid #eee";
+        li.innerHTML = `
+            <i class="fa-solid fa-location-dot" style="color: #1e3c99; margin-right: 10px;"></i>
+            <span>${cidade}</span>
+        `;
+        ul.appendChild(li);
+    });
 }
 
 function renderizarTabelaAlunos(dados) {

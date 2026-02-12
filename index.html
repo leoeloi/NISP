@@ -60,10 +60,10 @@
     </menu>
     </nav>
     <main>
-        <section id="resumo-geral" style="display: none;">
+        <section id="resumo-geral">
         <div class="titulo-pagina">Bem vindo ao NISP</div>
         
-        <div class="container-graficos-topo">
+        <div class="container-graficos">
             <div class="bloco-grafico-item">
                 <div class="titulo-estatistica">Certificações por Edição</div>
                 <div class="canvas-container">
@@ -77,19 +77,30 @@
                     <canvas id="grafico-barras-anos"></canvas>
                 </div>
             </div>
-        </div>
+            
+            <div class="bloco-grafico-item bloco-cidades">
+                <div class="titulo-estatistica">Cidades Atendidas</div>
+                <div id="lista-cidades-atendidas" class="lista-cidades">
+                    <ul id="cidades-atendidas-ul" class="lista-rolavel">
+                        <li>Carregando cidades...</li>
+                    </ul>
+                </div>
+            </div>
 
-        <div class="container-progresso-geral">
-            <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
-            <div class="barra-progresso-fundo">
-                <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
-                <span id="texto-progresso-percentual">0%</span>
-            </div>
-            <div class="legenda-progresso">
-                <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+            <div class="bloco-grafico-item">
+                <div class="titulo-estatistica">Progresso Geral: Municípios com GCM Atendidos</div>
+                <div class="barra-progresso-fundo">
+                    <div id="barra-preenchimento" class="barra-progresso-preenchimento"></div>
+                    <span id="texto-progresso-percentual">0%</span>
+                </div>
+                <div class="legenda-progresso">
+                    <span id="atendidos-count">0</span> de <span id="total-gcm-count">0</span> municípios com guarda já participaram do programa.
+                </div>
             </div>
         </div>
-        <img src="https://i.ibb.co/wFY81kqk/Calendario-NISP.png" alt="Calendario NISP" border="0">
+    </div>
+        
+        <img src="https://i.ibb.co/QFgwCsYG/Guardas-Municipais-Civis-VF-A4-horizontal.png" alt="Calendário NISP" border="0">
         </section>
         <section id="sobre-nisp">
             <div class="swiper mySwiperNisp">
