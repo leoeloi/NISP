@@ -223,10 +223,26 @@ function popularListaCursos(cursos) {
             (a.status || '').toLowerCase().includes('conclu')
         ).length;
 
-        // Lógica para o badge de convite (ac_convite)
+        // --- NOVA LÓGICA: Cores do Status do Curso ---
+        const statusTexto = (curso.status || 'N/A').trim().toUpperCase();
+        let corFundoStatus = '#6c757d'; // Cinza padrão para status desconhecidos
+        let corTextoStatus = '#ffffff'; // Texto branco padrão
+
+        if (statusTexto === 'ATENDIDO') {
+            corFundoStatus = '#1361af'; // Azul
+        } else if (statusTexto === 'EM ANDAMENTO') {
+            corFundoStatus = '#ffc107'; // Amarelo
+            corTextoStatus = '#000000'; // Texto preto para garantir boa leitura no fundo amarelo
+        } else if (statusTexto === 'NÃO ATENDIDO' || statusTexto === 'NAO ATENDIDO') {
+            corFundoStatus = '#dc3545'; // Vermelho
+        }
+        // ---------------------------------------------
+
+        // Lógica para o badge de convite (ac_convite) corrigida
         let badgeConvite = '-'; 
-        if (curso.ac_convite !== null && curso.ac_convite !== undefined) {
-            if (curso.ac_convite === true || curso.ac_convite === "Sim") {
+        if (curso.ac_convite !== null && curso.ac_convite !== undefined && curso.ac_convite !== '') {
+            const valorConvite = String(curso.ac_convite).trim().toUpperCase();
+            if (valorConvite === 'TRUE' || valorConvite === 'SIM' || valorConvite === '1' || valorConvite === 'T') {
                 badgeConvite = '<span style="background:#d4edda; color:#155724; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Convite: Sim</span>';
             } else {
                 badgeConvite = '<span style="background:#f8d7da; color:#721c24; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Convite: Não</span>';
@@ -238,8 +254,9 @@ function popularListaCursos(cursos) {
                 <div style="background: #fdfdfd; padding: 15px; border-bottom: 1px solid #eee;">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <h3 style="margin: 0; color: #333; font-size: 1.1rem; text-transform: uppercase;">${nomeDoCurso}</h3>
-                        <span style="font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 5px; background: #1361af; color: #ffffff;">
-                            ${(curso.status || 'N/A').toUpperCase()}
+                        
+                        <span style="font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 5px; background: ${corFundoStatus}; color: ${corTextoStatus};">
+                            ${statusTexto}
                         </span>
                     </div>
                     <div style="margin-top: 8px; display: flex; gap: 10px; align-items: center;">
