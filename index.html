@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="app.js"></script>
+    <script src="api.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
@@ -35,29 +36,39 @@
     </div>
 
 </div>
-    <nav>
+<nav>
         <div class="titulo">
             <img src="https://i.ibb.co/q3SXVh0g/Guardas-Municipais-Civis-VF-A4-horizontal-4.png" alt="Guardas Municipais Civis VF (A4 (horizontal)) (4)" border="0">
-            <div style="font-size: 26pt; font-weight: bold; margin-right: 5px;">NISP</div>
-            <div>NISP - Nivelamento Interfederativo <br>em Segurança Publica para Guardas Civis Municipais</div>
-        </div>
-        <menu id="menu-navegacao">
-        <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Início</a>
-        <a href="javascript:void(0)" onclick="navegarPara('sobre-nisp')">Sobre o NISP</a>
-        
-        <div id="area-restrita-menu" style="display: none; gap: 15px; align-items: center;">
-            <a href="javascript:void(0)" onclick="navegarPara('painel-municipio')">Municípios</a>
-            <a href="javascript:void(0)" onclick="navegarPara('painel-cursos')">Cursos/Edições</a>
-            <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
-            <button class="logout-btn" onclick="realizarLogout()">
-                <i class="fa-solid fa-right-from-bracket"></i> Sair
-            </button>
+            <div style="display: flex;">
+                <div style="font-size: 30pt; font-weight: bold; margin-right: 5px;">NISP</div>
+                <div style="font-size: 10pt;">Nivelamento Interfederativo <br>em Segurança Publica <br>para Guardas Civis Municipais</div>
+            </div>
         </div>
         
-        <button id="btn-login-abrir" class="logout-btn" onclick="document.getElementById('tela-login').style.display='flex'">
-            Acesso Restrito
+        <button id="btn-menu-mobile" onclick="toggleMenuMobile()">
+            <i class="fa-solid fa-bars"></i> Menu
         </button>
-    </menu>
+
+        <menu id="menu-navegacao">
+            <a href="javascript:void(0)" onclick="navegarPara('sobre-nisp')">Sobre o NISP</a>
+            
+            <div id="area-restrita-menu" style="display: none; gap: 15px; align-items: center;">
+                <a href="javascript:void(0)" onclick="navegarPara('resumo-geral')">Dashboard</a>
+                <a href="javascript:void(0)" onclick="navegarPara('painel-municipio')">Municípios</a>
+                <a href="javascript:void(0)" onclick="navegarPara('painel-cursos')">Cursos/Edições</a>
+                <a href="javascript:void(0)" onclick="navegarPara('painel-busca-alunos')">Busca de Alunos</a> 
+                
+                <a href="javascript:void(0)" id="gestao-usuarios-link" style="display: none;" onclick="navegarPara('gestao-usuarios')">Gestão de Usuários</a>
+                <a href="javascript:void(0)" onclick="navegarPara('perfil-pessoal')">Meu Perfil</a>
+                <button class="logout-btn" onclick="realizarLogout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sair
+                </button>
+            </div>  
+            
+            <button id="btn-login-abrir" class="logout-btn" onclick="document.getElementById('tela-login').style.display='flex'">
+                Acesso Restrito
+            </button>
+        </menu>
     </nav>
     <main>
         <section id="resumo-geral">
@@ -102,7 +113,7 @@
         
         <img src="https://i.ibb.co/QFgwCsYG/Guardas-Municipais-Civis-VF-A4-horizontal.png" alt="Calendário NISP" border="0">
         </section>
-        <section id="sobre-nisp">
+        <section id="sobre-nisp" style="display: none;">
             <div class="swiper mySwiperNisp">
         <div class="swiper-wrapper">
             <div class="swiper-slide"><img src="https://i.ibb.co/jkTZXDMZ/1.png" alt="1" border="0"></div>
@@ -115,9 +126,98 @@
         <div class="swiper-pagination"></div>
     </div>
         <div class="titulo-pagina">Sobre o NISP</div>
-        <div class="container-sobre">
-            <p>O NISP (Nivelamento Interfederativo em Segurança Pública para Guardas Civis Municipais) é um programa de capacitação e nivelamento voltado para as Guardas Municipais do estado da Bahia. O objetivo do NISP é promover a qualificação dos profissionais das Guardas Municipais, proporcionando treinamentos e cursos que visam aprimorar suas habilidades e conhecimentos na área de segurança pública.</p>
-            <p>O programa é desenvolvido em parceria entre a Secretaria da Segurança Pública da Bahia, a Superintendência de Gestão Integrada da Ação Policial e a Escola de Governo da Segurança Pública. O NISP busca fortalecer as Guardas Municipais, promovendo a troca de experiências e o desenvolvimento de competências essenciais para o desempenho eficiente das atividades de segurança pública nos municípios baianos.</p>
+
+<div class="container-sobre">
+    <p>
+        O <strong>Nivelamento Interfederativo em Segurança Pública (NISP)</strong> é uma capacitação com foco no aprendizado e na troca de experiências entre as Guardas Civis Municipais (GCMs) e as Forças de Segurança Pública . A iniciativa é promovida pela Superintendência de Gestão Integrada da Ação Policial (SIAP), por meio da UCS/SSP .
+    </p>
+
+    <h3>Missão e Justificativa</h3>
+    <p>
+        A necessidade de um curso de nivelamento é evidente diante do cenário atual, onde os desafios de segurança estão em constante evolução e cada dia mais complexos . A capacitação contínua é fundamental para que os profissionais atuem de forma eficaz e alinhada às políticas de segurança num esforço conjunto de paz social . O curso oferece uma oportunidade de atualização, abordando tanto competências técnicas quanto habilidades transdisciplinares essenciais .
+    </p>
+
+    <h3>Objetivos Principais</h3>
+    <ul>
+        <li><strong>Capacitação Geral:</strong> Capacitar os Guardas Municipais em práticas de segurança pública, promovendo o alinhamento profissional e a cooperação entre as diversas unidades da Secretaria de Segurança e as Forças de Segurança Pública .</li>
+        <li><strong>Habilidades Interpessoais:</strong> Desenvolver habilidades de comunicação e relacionamento interpessoal para interações eficazes com a comunidade, abordagens a veículos e pessoas, e atuação em ambientes escolares .</li>
+        <li><strong>Conformidade Legal:</strong> Aplicar procedimentos operacionais adequados para garantir o cumprimento da legislação e a proteção dos direitos e garantias individuais .</li>
+        <li><strong>Integração:</strong> Promover uma abordagem holística e colaborativa na prevenção à criminalidade e na promoção do bem-estar da comunidade .</li>
+    </ul>
+
+    <h3>Matriz Curricular</h3>
+    <p>A formação abrange componentes curriculares fundamentais para a atuação da GCM, incluindo:</p>
+    <ul>
+        <li>Gerenciamento de Crise e Negociação, com foco no papel do primeiro interventor .</li>
+        <li>Estratégias de abordagem a pessoas e veículos .</li>
+        <li>Atendimento a grupos em situação de vulnerabilidade, além de mulheres e meninas em situação de violência .</li>
+        <li>Uso de Instrumentos de Menor Potencial Ofensivo (IMPO) e Primeiros-Socorros .</li>
+        <li>Tecnologia de Videomonitoramento e Escola Segura .</li>
+    </ul>
+
+    <h3>Histórico de Impacto e Edições</h3>
+    <p>
+        Desde o seu início, o programa vem expandindo seu alcance por toda a Bahia. A tabela abaixo apresenta o histórico de participação e formação nas edições já realizadas e na atual:
+    </p>
+
+    <div class="tabela-container" style="overflow-x: auto; margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0;">
+            <thead style="background: #1e3c99; color: white; text-align: left;">
+                <tr>
+                    <th style="padding: 12px;">Edição</th>
+                    <th style="padding: 12px;">Nível</th>
+                    <th style="padding: 12px;">Ano</th>
+                    <th style="padding: 12px; text-align: center;">Municípios Atendidos</th>
+                    <th style="padding: 12px; text-align: center;">GCMs Matriculados/Formados</th>
+                </tr>
+            </thead>
+            <tbody style="color: #333;">
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">I Edição</td>
+                    <td style="padding: 12px;">Básico</td>
+                    <td style="padding: 12px;">2023</td>
+                    <td style="padding: 12px; text-align: center;">23 </td>
+                    <td style="padding: 12px; text-align: center;">52 </td>
+                </tr>
+                <tr style="background: #f9f9f9; border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">II Edição</td>
+                    <td style="padding: 12px;">Básico</td>
+                    <td style="padding: 12px;">2024</td>
+                    <td style="padding: 12px; text-align: center;">28 </td>
+                    <td style="padding: 12px; text-align: center;">52 </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">I Edição</td>
+                    <td style="padding: 12px; font-weight: bold;">Avançado</td>
+                    <td style="padding: 12px;">2024</td>
+                    <td style="padding: 12px; text-align: center;">22 </td>
+                    <td style="padding: 12px; text-align: center;">52 </td>
+                </tr>
+                <tr style="background: #f9f9f9; border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">III Edição</td>
+                    <td style="padding: 12px;">Básico</td>
+                    <td style="padding: 12px;">2025</td>
+                    <td style="padding: 12px; text-align: center;">18 </td>
+                    <td style="padding: 12px; text-align: center;">50 </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">IV Edição</td>
+                    <td style="padding: 12px;">Básico</td>
+                    <td style="padding: 12px;">2025</td>
+                    <td style="padding: 12px; text-align: center;">26 </td>
+                    <td style="padding: 12px; text-align: center;">63 </td>
+                </tr>
+                <tr style="background: #eef2ff; font-weight: bold;">
+                    <td style="padding: 12px; color: #1e3c99;">V Edição</td>
+                    <td style="padding: 12px; color: #1e3c99;">Básico</td>
+                    <td style="padding: 12px; color: #1e3c99;">2026</td>
+                    <td style="padding: 12px; text-align: center; color: #1e3c99;">35 </td>
+                    <td style="padding: 12px; text-align: center; color: #1e3c99;">60 </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
         </section>
         <section id="painel-municipio" >
             <div class="painel-mun-header">
@@ -237,7 +337,78 @@
                 </div>
             </div>
         </section>
-        <section id="gestao-usuarios"></section>
+        <section id="perfil-pessoal" style="display: none; padding: 20px;">
+            <div class="titulo-pagina">Meu Perfil</div>
+            <div style="background: white; padding: 25px; border-radius: 8px; max-width: 400px; margin-top: 20px; border: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                
+                <h3 style="margin-top: 0; color: #152c6e;">Olá, <span id="nome-usuario-logado">...</span></h3>
+                <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
+                
+                <h4 style="margin-top: 0; color: #333;">Alterar Senha</h4>
+                <input type="password" id="nova-senha-input" placeholder="Nova senha (mín. 6 caracteres)" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                
+                <input type="password" id="confirma-senha-input" placeholder="Confirme a nova senha" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                
+                <button onclick="alterarMinhaSenha()" class="logout-btn" style="width: 100%; background-color: #1e3c99;">Salvar Nova Senha</button>
+                <p id="msg-perfil" style="margin-top: 15px; font-weight: bold; font-size: 0.9rem; text-align: center;"></p>
+            </div>
+        </section>
+
+        <section id="gestao-usuarios" style="display: none; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="titulo-pagina" style="border: none; padding: 0;">Gestão de Usuários</div>
+                <button onclick="abrirModalUsuario()" class="logout-btn" style="background-color: #28a745;"><i class="fa-solid fa-user-plus"></i> Novo Usuário</button>
+            </div>
+            
+            <div class="tabela-container" style="margin-top: 20px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                    <thead style="background: #1e3c99; color: white; text-align: left;">
+                        <tr>
+                            <th style="padding: 12px;">Nome</th>
+                            <th style="padding: 12px;">E-mail</th>
+                            <th style="padding: 12px;">Nível</th>
+                            <th style="padding: 12px; text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-corpo-usuarios">
+                        <tr><td colspan="4" style="text-align: center; padding: 20px;">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="modal-novo-usuario" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 30px; border-radius: 8px; width: 350px; display: flex; flex-direction: column; gap: 15px;">
+                    <h3 style="margin: 0; color: #152c6e;">Cadastrar Usuário</h3>
+                    <input type="text" id="novo-nome" placeholder="Nome Completo" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="email" id="novo-email" placeholder="E-mail" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="password" id="novo-senha" placeholder="Senha Provisória" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <select id="novo-role" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="usuario">Usuário Padrão</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button onclick="fecharModalUsuario()" style="flex: 1; padding: 10px; background: #dc3545; color: white; border: none; cursor: pointer;">Cancelar</button>
+                        <button onclick="salvarNovoUsuario()" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer;">Salvar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-editar-usuario" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 30px; border-radius: 8px; width: 350px; display: flex; flex-direction: column; gap: 15px;">
+                    <h3 style="margin: 0; color: #152c6e;">Editar Usuário</h3>
+                    <input type="hidden" id="edit-id">
+                    <input type="text" id="edit-nome" placeholder="Nome" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <select id="edit-role" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="usuario">Usuário Padrão</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button onclick="fecharModalEditar()" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; cursor: pointer;">Cancelar</button>
+                        <button onclick="confirmarEdicaoUsuario()" style="flex: 1; padding: 10px; background: #1e3c99; color: white; border: none; cursor: pointer;">Atualizar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 </body>
 </html>

@@ -1,153 +1,207 @@
+// 1. CONFIGURAÇÃO INICIAL E VARIÁVEIS GLOBAIS
+
 const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Objeto global para armazenar os cálculos realizados no init
 let loadedData = {};
 let listaGlobalAlunos = [];
+let chartEdicao = null;
+let chartBarras = null;
+
+// ==========================================
+// 2. INICIALIZAÇÃO E FLUXO PRINCIPAL
+// ==========================================
+
+async function init() {
+    console.log("Iniciando carregamento...");
+    try {
+        // Busca os dados através da ponte segura
+        const [municipios, todosCursos, todosAlunos] = await Promise.all([
+            apiNISP.buscarTabela('municipios'),
+            apiNISP.buscarTabela('cursos'),
+            apiNISP.buscarTabela('alunos')
+        ]);
+
+        // Processa os dados
+        loadedData = apiNISP.processarDados(municipios, todosCursos, todosAlunos);
+
+        // Atualiza a interface com os dados
+        popularSelectMunicipios(municipios);
+        atualizarEstatisticasGlobais();
+        popularPainelEdicoes();
+        prepararListaGlobalAlunos();
+        processarCidadesAtendidas();
+
+    } catch (err) {
+        console.error("Erro crítico no carregamento:", err);
+    }
+}
+
+// ==========================================
+// 3. CONTROLE DE AUTENTICAÇÃO (LOGIN/LOGOUT)
+// ==========================================
+
+async function verificarSessao() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    
+    if (session) {
+        mostrarSistema();
+        verificarPermissoes(); //Verifica se é admin
+    } else {
+        // 1. Esconde os itens privados do menu
+        document.getElementById('tela-login').style.display = 'none';
+        document.getElementById('area-restrita-menu').style.display = 'none';
+        document.getElementById('btn-login-abrir').style.display = 'block';
+        navegarPara('sobre-nisp');
+    }
+}
 
 async function realizarLogin() {
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
     const erroMsg = document.getElementById('erro-login');
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: senha,
-    });
-
-    if (error) {
-        erroMsg.style.display = 'block';
-        erroMsg.textContent = error.message;
-    } else {
-        console.log("Login realizado com sucesso!");
+    try {
+        const resultado = await apiNISP.login(email, senha);
+        
+        if (resultado.role === 'admin') {
+            document.getElementById('gestao-usuarios-link').style.display = 'block';
+        }
+        
         mostrarSistema();
+    } catch (error) {
+        erroMsg.style.display = 'block';
+        erroMsg.textContent = "Erro ao acessar: " + error.message;
     }
 }
 
-function mostrarSistema() {
-    // Oculta a tela de login (o modal/overlay)
+async function realizarLogout() {
+    await apiNISP.logout();
+    document.getElementById('area-restrita-menu').style.display = 'none';
+    document.getElementById('btn-login-abrir').style.display = 'block';
+    
+    loadedData = {};
+    listaGlobalAlunos = [];
+    
+    navegarPara('sobre-nisp');
+    console.log("Usuário deslogado. Mantendo acesso público.");
+}
+
+async function mostrarSistema() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    
+    if (!session) {
+        console.error("Tentativa de acesso não autorizada detectada.");
+        alert("Acesso Negado: Nenhuma sessão válida encontrada.");
+        window.location.reload(); 
+        return; 
+    }
+
     const telaLogin = document.getElementById('tela-login');
     if (telaLogin) telaLogin.style.display = 'none';
     
-    // Exibe a parte restrita do menu
     const areaRestrita = document.getElementById('area-restrita-menu');
     if (areaRestrita) areaRestrita.style.display = 'flex';
     
-    // Oculta o botão de "Entrar" já que já logou
     const btnLoginAbrir = document.getElementById('btn-login-abrir');
     if (btnLoginAbrir) btnLoginAbrir.style.display = 'none';
     
     // Carrega os dados do Supabase
     init(); 
+    carregarDadosPerfil(); 
+    resetarTimer();
+
+    navegarPara('resumo-geral'); 
 }
 
-async function verificarSessao() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    
-    if (session) {
-        // Se estiver logado, libera tudo automaticamente
-        mostrarSistema();
-    } else {
-        // Se NÃO estiver logado, garante que a tela de login esteja oculta
-        // e que apenas as abas públicas funcionem.
-        document.getElementById('tela-login').style.display = 'none';
-        document.getElementById('area-restrita-menu').style.display = 'none';
-        document.getElementById('btn-login-abrir').style.display = 'block';
-        
-        // Garante que comece na aba pública
-        navegarPara('resumo-geral');
+async function verificarPermissoes() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+        const isAdmin = await apiNISP.verificarAdmin(user.id);
+        if (isAdmin) {
+            document.getElementById('gestao-usuarios-link').style.display = 'block';
+            if (typeof carregarListaDeUsuarios === 'function') carregarListaDeUsuarios();
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    verificarSessao();
-});
+// ==========================================
+// 4. NAVEGAÇÃO E INTERFACE
+// ==========================================
 
-async function realizarLogout() {
-    await supabaseClient.auth.signOut();
-    
-    // 1. Esconde os itens privados do menu
-    document.getElementById('area-restrita-menu').style.display = 'none';
-    
-    // 2. Mostra o botão de login novamente
-    document.getElementById('btn-login-abrir').style.display = 'block';
-    
-    navegarPara('resumo-geral');
-    
-    // 4. Limpa dados sensíveis da memória se necessário
-    loadedData = {};
-    listaGlobalAlunos = [];
-    
-    console.log("Usuário deslogado. Mantendo acesso público.");
-}
+function navegarPara(sectionId) {
+    // 1. Identifica as seções
+    const secoes = [
+        'resumo-geral', 'sobre-nisp', 'painel-municipio', 
+        'painel-cursos', 'painel-busca-alunos', 'gestao-usuarios', 'perfil-pessoal' 
+    ];
 
-async function init() {
-    console.log("Iniciando carregamento...");
-    try {
-        const [resMun, resCur, resAlu] = await Promise.all([
-            supabaseClient.from('municipios').select('*').order('nome', { ascending: true }),
-            // Buscamos todas as colunas necessárias da tabela cursos
-            supabaseClient.from('cursos').select('*, comunicacao, status, ac_convite, obs').order('curso', { ascending: true }),
-            supabaseClient.from('alunos').select('*')
-        ]);
+    // 2. Oculta todas as seções
+    secoes.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
 
-        if (resMun.error) throw resMun.error;
+    // 3. Exibe a seção desejada
+    const secaoAlvo = document.getElementById(sectionId);
+    if (secaoAlvo) {
+        secaoAlvo.style.display = 'block';
+        window.scrollTo(0, 0);
         
-        const municipios = resMun.data;
-        const todosCursos = resCur.data || [];
-        const todosAlunos = resAlu.data || [];
-
-        // 1. POPULAR O SELECT
-        const municipioSelect = document.getElementById('municipio-select');
-        if (municipioSelect) {
-            municipioSelect.innerHTML = '<option value="">Selecione um município</option>';
-            municipios.forEach(m => {
-                const option = document.createElement('option');
-                option.value = m.id;
-                option.textContent = m.nome;
-                municipioSelect.appendChild(option);
-            });
+        if (sectionId === 'painel-municipio') {
+            carregarDadosMunicipio("Abaíra");
+        }
+        if (sectionId === 'painel-cursos' && typeof popularPainelEdicoes === 'function') {
+            popularPainelEdicoes();
         }
 
-        // 2. ORGANIZAR DADOS
-        loadedData = {};
-        municipios.forEach(mun => {
-            const cursosDoMun = todosCursos.filter(c => c.municipio_id === mun.id).map(curso => {
-                const alunosDoCurso = todosAlunos.filter(a => a.curso_id === curso.id);
-                return { ...curso, alunos: alunosDoCurso };
-            });
-
-            let nomesUnicos = new Set();
-            let certs = 0;
-
-            cursosDoMun.forEach(curso => {
-                curso.alunos.forEach(aluno => {
-                    if ((aluno.status || '').toLowerCase().includes('conclu')) {
-                        certs++;
-                        nomesUnicos.add(aluno.nome);
-                    }
-                });
-            });
-
-            loadedData[mun.id] = { 
-                ...mun, 
-                cursos: cursosDoMun,
-                totalConcluintes: nomesUnicos.size, 
-                totalCertificados: certs 
-            };
-        });
-        console.log("Processamento concluído.");
-    } catch (err) {
-        console.error("Erro crítico no init:", err);
+        if (sectionId === 'painel-busca-alunos') {
+            prepararListaGlobalAlunos();
+        }
     }
 
-    atualizarEstatisticasGlobais();
-    popularPainelEdicoes();
-    prepararListaGlobalAlunos();
-    processarCidadesAtendidas();
+    const menu = document.getElementById('menu-navegacao');
+    if (menu && menu.classList.contains('ativo')) {
+        menu.classList.remove('ativo');
+    }
 
+    console.log(`Navegou para: ${sectionId}`);
+}
+
+function irParaMunicipio(id) {
+    const select = document.getElementById('municipio-select');
+    if (select) {
+        navegarPara('painel-municipio'); // Garante que a seção de municípios esteja visível
+        select.value = id;
+        carregarDadosMunicipio(id);
+        document.getElementById('painel-municipio').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function toggleMenuMobile() {
+    const menu = document.getElementById('menu-navegacao');
+    menu.classList.toggle('ativo');
+}
+
+// ==========================================
+// 5. RENDERIZAÇÃO DO DOM (HTML)
+// ==========================================
+
+function popularSelectMunicipios(municipios) {
+    const select = document.getElementById('municipio-select');
+    if (!select) return;
+    
+    // Evita duplicar opções caso a função rode duas vezes
+    select.innerHTML = '<option value="">Selecione um município...</option>'; 
+    
+    municipios.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(mun => {
+        const option = document.createElement('option');
+        option.value = mun.id;
+        option.textContent = mun.nome;
+        select.appendChild(option);
+    });
 }
 
 async function carregarDadosMunicipio(municipioId) {
@@ -155,13 +209,11 @@ async function carregarDadosMunicipio(municipioId) {
     if (!mun) return;
 
     try {
-        // Atualiza Informações Básicas
+        // Atualiza Informações do Município
         document.getElementById('nome-mun').textContent = mun.nome;
         document.getElementById('territorio-mun').textContent = mun.territorio || '-';
         document.getElementById('populacao').textContent = mun.populacao || '-';
         document.getElementById('prefeito').textContent = mun.prefeito || '-';
-        
-        // CORREÇÃO: Preenchimento dos contatos que apareciam vazios
         document.getElementById('email-pref').textContent = mun.email_pref || '-';
         document.getElementById('tel-pref').textContent = mun.telefone_pref || '-';
         document.getElementById('chefe-guarda').textContent = mun.chefe_gm || '-';
@@ -223,7 +275,7 @@ function popularListaCursos(cursos) {
             (a.status || '').toLowerCase().includes('conclu')
         ).length;
 
-        // --- NOVA LÓGICA: Cores do Status do Curso ---
+        //Cores do Status do Curso ---
         const statusTexto = (curso.status || 'N/A').trim().toUpperCase();
         let corFundoStatus = '#6c757d'; // Cinza padrão para status desconhecidos
         let corTextoStatus = '#ffffff'; // Texto branco padrão
@@ -243,9 +295,9 @@ function popularListaCursos(cursos) {
         if (curso.ac_convite !== null && curso.ac_convite !== undefined && curso.ac_convite !== '') {
             const valorConvite = String(curso.ac_convite).trim().toUpperCase();
             if (valorConvite === 'TRUE' || valorConvite === 'SIM' || valorConvite === '1' || valorConvite === 'T') {
-                badgeConvite = '<span style="background:#d4edda; color:#155724; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Convite: Sim</span>';
+                badgeConvite = '<span style="background:#d4edda; color:#155724; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Aceitou o convite? Sim</span>';
             } else {
-                badgeConvite = '<span style="background:#f8d7da; color:#721c24; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Convite: Não</span>';
+                badgeConvite = '<span style="background:#f8d7da; color:#721c24; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Aceitou o convite? Não</span>';
             }
         }
         
@@ -290,139 +342,6 @@ function popularListaCursos(cursos) {
             </div>
         `;
     }).join('');
-}
-
-
-let chartEdicao = null;
-let chartBarras = null;
-
-function atualizarEstatisticasGlobais() {
-    const listaMunicipios = Object.values(loadedData);
-    
-    // FILTRO BASE: Apenas municípios que possuem GCM
-    const munComGuarda = listaMunicipios.filter(m => m.possui_guarda === true);
-
-    const certsPorEdicao = {};
-    
-    munComGuarda.forEach(mun => {
-        mun.cursos.forEach(curso => {
-            const identificador = `${curso.curso}`;
-            const concluintes = curso.alunos.filter(a => (a.status || '').toLowerCase().includes('conclu')).length;
-
-            if (concluintes === 0) return; // Pula cursos sem concluintes
-            certsPorEdicao[identificador] = (certsPorEdicao[identificador] || 0) + concluintes;
-        });
-    });
-    
-    renderizarBarrasEdicao(certsPorEdicao);
-
-    // --- 2. ÍNDICE: Certificados por Ano (Gráfico de Barras) ---
-    const certsPorAnoBruto = {};
-    munComGuarda.forEach(mun => {
-        mun.cursos.forEach(curso => {
-            const ano = curso.ano || "S/D";
-            const concluintes = curso.alunos.filter(a => (a.status || '').toLowerCase().includes('conclu')).length;
-            certsPorAnoBruto[ano] = (certsPorAnoBruto[ano] || 0) + concluintes;
-        });
-    });
-
-    // CORREÇÃO: Filtra apenas os anos que possuem pelo menos 1 concluinte
-    const certsPorAnoFiltrado = {};
-    Object.keys(certsPorAnoBruto).forEach(ano => {
-        if (certsPorAnoBruto[ano] > 0) {
-            certsPorAnoFiltrado[ano] = certsPorAnoBruto[ano];
-        }
-    });
-
-    renderizarBarrasAno(certsPorAnoFiltrado);
-
-    // --- 3. ÍNDICE: Progresso Geral (Barra de Progresso) ---
-    const atendidosGeral = munComGuarda.filter(m => m.totalConcluintes > 0).length;
-    const totalGeralGCM = munComGuarda.length;
-    const percGeral = totalGeralGCM > 0 ? ((atendidosGeral / totalGeralGCM) * 100).toFixed(1) : 0;
-
-    const elementoBarra = document.getElementById('barra-preenchimento');
-    if (elementoBarra) {
-        elementoBarra.style.width = `${percGeral}%`;
-        document.getElementById('texto-progresso-percentual').textContent = `${percGeral}%`;
-        document.getElementById('atendidos-count').textContent = atendidosGeral;
-        document.getElementById('total-gcm-count').textContent = totalGeralGCM;
-    }
-}
-
-function renderizarBarrasEdicao(dados) {
-    const ctx = document.getElementById('grafico-barras-edicao').getContext('2d');
-    if (chartEdicao) chartEdicao.destroy();
-    const edicoes = Object.keys(dados);
-    const valores = edicoes.map(e => dados[e]);
-    chartEdicao = new Chart(ctx, {
-        type: 'bar',
-        plugins: [ChartDataLabels],
-        data: {
-            labels: edicoes,
-            datasets: [{
-                label: 'Certificações',
-                data: valores,
-                backgroundColor: '#E4AD36',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, 
-            datalabels: { 
-                anchor: 'end', 
-                align: 'end', 
-                font: { weight: 'bold', size: 14 },
-                formatter: function(value) {
-                    return value;
-                }
-            } },
-            scales: {
-                x: { beginAtZero: true, grace: '20%', ticks: { display: false }, grid: { display: false } },
-                y: { ticks: { font: { size: 12, weight: 'bold' } }, grid: { display: false } }
-            }
-        }
-    });
-}
-
-function renderizarBarrasAno(dados) {
-    const ctx = document.getElementById('grafico-barras-anos').getContext('2d');
-    if (chartBarras) chartBarras.destroy();
-
-    const anos = Object.keys(dados).sort();
-    const valores = anos.map(a => dados[a]);
-
-    chartBarras = new Chart(ctx, {
-        type: 'bar',
-        plugins: [ChartDataLabels],
-        data: {
-            labels: anos,
-            datasets: [{
-                label: 'Certificações',
-                data: valores,
-                backgroundColor: '#1e3c99',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, 
-            datalabels: { 
-                anchor: 'end', 
-                align: 'top', 
-                font: { weight: 'bold', size: 14 },
-                formatter: function(value) {
-                    return value;
-                }
-            } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 },
-        grace: '40%' } }
-        }
-    });
 }
 
 function popularPainelEdicoes() {
@@ -479,17 +398,6 @@ function popularPainelEdicoes() {
     `).join('');
 }
 
-// Função para navegar até o município e rolar a tela
-function irParaMunicipio(id) {
-    const select = document.getElementById('municipio-select');
-    if (select) {
-        navegarPara('painel-municipio'); // Garante que a seção de municípios esteja visível
-        select.value = id;
-        carregarDadosMunicipio(id);
-        document.getElementById('painel-municipio').scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
 function prepararListaGlobalAlunos() {
     listaGlobalAlunos = [];
     Object.values(loadedData).forEach(mun => {
@@ -504,6 +412,30 @@ function prepararListaGlobalAlunos() {
         });
     });
     renderizarTabelaAlunos(listaGlobalAlunos);
+}
+
+function renderizarTabelaAlunos(dados) {
+    const corpoTabela = document.getElementById('tabela-corpo-alunos');
+    if (!corpoTabela) return;
+
+    if (dados.length === 0) {
+        corpoTabela.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Nenhum aluno encontrado.</td></tr>';
+        return;
+    }
+
+    corpoTabela.innerHTML = dados.map(aluno => `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 12px;">${aluno.nome}</td>
+            <td style="padding: 12px;">${aluno.cpf || '-'}</td>
+            <td style="padding: 12px; font-size: 0.85rem;">${aluno.nomeEdicao}</td>
+            <td style="padding: 12px;">${aluno.nomeMunicipio}</td>
+            <td style="padding: 12px;">
+                <span style="color: ${(aluno.status || '').toLowerCase().includes('conclu') ? '#28a745' : '#6c757d'}; font-weight: bold;">
+                    ${aluno.status}
+                </span>
+            </td>
+        </tr>
+    `).join('');
 }
 
 function processarCidadesAtendidas() {
@@ -549,93 +481,111 @@ const ul = document.getElementById('cidades-atendidas-ul');
     });
 }
 
-function renderizarTabelaAlunos(dados) {
-    const corpoTabela = document.getElementById('tabela-corpo-alunos');
-    if (!corpoTabela) return;
+// ==========================================
+// 6. GRÁFICOS (CHART.JS) E ESTATÍSTICAS
+// ==========================================
+function atualizarEstatisticasGlobais() {
+    const listaMunicipios = Object.values(loadedData);
+    const munComGuarda = listaMunicipios.filter(m => m.possui_guarda === true);
+    const certsPorEdicao = {};
+    const certsPorAnoBruto = {};
+    
+    munComGuarda.forEach(mun => {
+        mun.cursos.forEach(curso => {
+            const concluintes = curso.alunos.filter(a => (a.status || '').toLowerCase().includes('conclu')).length;
+            if (concluintes === 0) return; 
 
-    if (dados.length === 0) {
-        corpoTabela.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Nenhum aluno encontrado.</td></tr>';
-        return;
-    }
+            // Dados para gráfico de edição
+            const idEdicao = `${curso.curso}`;
+            certsPorEdicao[idEdicao] = (certsPorEdicao[idEdicao] || 0) + concluintes;
 
-    corpoTabela.innerHTML = dados.map(aluno => `
-        <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 12px;">${aluno.nome}</td>
-            <td style="padding: 12px;">${aluno.cpf || '-'}</td>
-            <td style="padding: 12px; font-size: 0.85rem;">${aluno.nomeEdicao}</td>
-            <td style="padding: 12px;">${aluno.nomeMunicipio}</td>
-            <td style="padding: 12px;">
-                <span style="color: ${(aluno.status || '').toLowerCase().includes('conclu') ? '#28a745' : '#6c757d'}; font-weight: bold;">
-                    ${aluno.status}
-                </span>
-            </td>
-        </tr>
-    `).join('');
-}
+            // Dados para gráfico de anos
+            const ano = curso.ano || "S/D";
+            certsPorAnoBruto[ano] = (certsPorAnoBruto[ano] || 0) + concluintes;
+        });
+    });
+    
+    renderizarBarrasEdicao(certsPorEdicao);
 
-function navegarPara(sectionId) {
-    // 1. Lista de todos os IDs de seções que você tem no index2.html
-    const secoes = [
-        'resumo-geral',
-        'sobre-nisp',
-        'painel-municipio',
-        'painel-cursos',
-        'painel-busca-alunos',
-        'gestao-usuarios'
-    ];
-
-    // 2. Oculta todas as seções
-    secoes.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+    const certsPorAnoFiltrado = {};
+    Object.keys(certsPorAnoBruto).forEach(ano => {
+        if (certsPorAnoBruto[ano] > 0) certsPorAnoFiltrado[ano] = certsPorAnoBruto[ano];
     });
 
-    // 3. Exibe a seção desejada
-    const secaoAlvo = document.getElementById(sectionId);
-    if (secaoAlvo) {
-        secaoAlvo.style.display = 'block';
-        window.scrollTo(0, 0);
-        
-        if (sectionId === 'painel-cursos' && typeof popularPainelEdicoes === 'function') {
-            popularPainelEdicoes();
-        }
+    renderizarBarrasAno(certsPorAnoFiltrado);
 
-        if (sectionId === 'painel-busca-alunos') {
-            prepararListaGlobalAlunos();
-        }
+    // Barra de Progresso
+    const atendidosGeral = munComGuarda.filter(m => m.totalConcluintes > 0).length;
+    const totalGeralGCM = munComGuarda.length;
+    const percGeral = totalGeralGCM > 0 ? ((atendidosGeral / totalGeralGCM) * 100).toFixed(1) : 0;
+
+    const elementoBarra = document.getElementById('barra-preenchimento');
+    if (elementoBarra) {
+        elementoBarra.style.width = `${percGeral}%`;
+        document.getElementById('texto-progresso-percentual').textContent = `${percGeral}%`;
+        document.getElementById('atendidos-count').textContent = atendidosGeral;
+        document.getElementById('total-gcm-count').textContent = totalGeralGCM;
     }
-
-    // 4. Fecha qualquer dropdown aberto (opcional, para melhor UX)
-    console.log(`Navegou para: ${sectionId}`);
 }
 
+
+
+function renderizarBarrasEdicao(dados) {
+    const ctx = document.getElementById('grafico-barras-edicao')?.getContext('2d');
+    if (!ctx) return;
+    if (chartEdicao) chartEdicao.destroy();
+    const edicoes = Object.keys(dados);
+    const valores = edicoes.map(e => dados[e]);
+    chartEdicao = new Chart(ctx, {
+        type: 'bar',
+        plugins: [ChartDataLabels],
+        data: { labels: edicoes, datasets: [{ label: 'Certificações', data: valores, backgroundColor: '#E4AD36', borderRadius: 4 }] },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', font: { weight: 'bold', size: 14 } } },
+            scales: { x: { beginAtZero: true, grace: '20%', ticks: { display: false }, grid: { display: false } }, y: { ticks: { font: { size: 12, weight: 'bold' } }, grid: { display: false } } }
+        }
+    });
+}
+
+function renderizarBarrasAno(dados) {
+    const ctx = document.getElementById('grafico-barras-anos')?.getContext('2d');
+    if (!ctx) return;
+    if (chartBarras) chartBarras.destroy();
+    const anos = Object.keys(dados).sort();
+    const valores = anos.map(a => dados[a]);
+    chartBarras = new Chart(ctx, {
+        type: 'bar',
+        plugins: [ChartDataLabels],
+        data: { labels: anos, datasets: [{ label: 'Certificações', data: valores, backgroundColor: '#1e3c99', borderRadius: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold', size: 14 } } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grace: '40%' } }
+        }
+    });
+}
+
+
+// ==========================================
+// 7. EVENTOS DE CARREGAMENTO (CONSOLIDADOS)
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Mesmo sem login, inicializamos o que for público se necessário
-    // Mas o init() completo deve rodar preferencialmente após o login para economizar requests
+    
+    // 1. Checagem de Sessão (Inicia o sistema se logado)
     verificarSessao();
-});
 
-document.addEventListener('DOMContentLoaded', function() {
-      const swiper = new Swiper('.mySwiperNisp', {
-          loop: true,
-          autoplay: {
-              delay: 4000,
-              disableOnInteraction: false,
-          },
-          pagination: {
-              el: '.swiper-pagination',
-              clickable: true,
-          },
-          navigation: {
-              nextEl: '.swiper-button-next',
-              prevEl: '.swiper-button-prev',
-          },
-      });
-  });
+    // 2. Inicialização do Carrossel (Swiper)
+    if (typeof Swiper !== 'undefined') {
+        new Swiper('.mySwiperNisp', {
+            loop: true,
+            autoplay: { delay: 4000, disableOnInteraction: false },
+            pagination: { el: '.swiper-pagination', clickable: true },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+        });
+    }
 
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-
+    // 3. Listeners de Interface
     const select = document.getElementById('municipio-select');
     if (select) {
         select.addEventListener('change', (e) => {
@@ -656,3 +606,135 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================
+// 8. TIMER DE INATIVIDADE E PERFIL
+// ==========================================
+
+let timerInatividade;
+const TEMPO_LIMITE_MS = 30 * 60 * 1000; // 30 minutos
+
+function resetarTimer() {
+    clearTimeout(timerInatividade);
+    timerInatividade = setTimeout(async () => {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            console.log("Sua sessão expirou devido a 30 minutos de inatividade. Por segurança, faça o login novamente.");
+            realizarLogout();
+        }
+    }, TEMPO_LIMITE_MS);
+}
+
+// Escuta os movimentos do mouse e teclado na tela inteira
+['mousemove', 'keydown', 'scroll', 'click'].forEach(evento => {
+    document.addEventListener(evento, resetarTimer);
+});
+
+async function carregarDadosPerfil() {
+    const perfil = await apiNISP.buscarMeuPerfil();
+    if (perfil && perfil.nome) {
+        document.getElementById('nome-usuario-logado').textContent = perfil.nome;
+    }
+}
+
+async function alterarMinhaSenha() {
+    const senha1 = document.getElementById('nova-senha-input').value;
+    const senha2 = document.getElementById('confirma-senha-input').value;
+    const msg = document.getElementById('msg-perfil');
+    
+    if (senha1.length < 6) {
+        msg.textContent = "A senha deve ter no mínimo 6 caracteres."; msg.style.color = "red"; return;
+    }
+    if (senha1 !== senha2) {
+        msg.textContent = "As senhas não coincidem. Digite novamente."; msg.style.color = "red"; return;
+    }
+
+    try {
+        msg.textContent = "Atualizando..."; msg.style.color = "#1e3c99";
+        await apiNISP.mudarMinhaSenha(senha1);
+        msg.textContent = "Senha atualizada com sucesso!"; msg.style.color = "green";
+        document.getElementById('nova-senha-input').value = "";
+        document.getElementById('confirma-senha-input').value = "";
+    } catch (error) {
+        msg.textContent = "Erro ao atualizar: " + error.message; msg.style.color = "red";
+    }
+}
+
+// ==========================================
+// 9. GESTÃO DE USUÁRIOS (ADMIN)
+// ==========================================
+
+async function carregarListaDeUsuarios() {
+    const corpoTabela = document.getElementById('tabela-corpo-usuarios');
+    if (!corpoTabela) return;
+
+    try {
+        const usuarios = await apiNISP.listarUsuarios();
+        corpoTabela.innerHTML = usuarios.map(u => `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">${u.nome || '-'}</td>
+                <td style="padding: 12px;">${u.email}</td>
+                <td style="padding: 12px;"><span style="background: ${u.role === 'admin' ? '#1e3c99' : '#6c757d'}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">${u.role.toUpperCase()}</span></td>
+                <td style="padding: 12px; text-align: center;">
+                    <button onclick="abrirModalEditar('${u.id}', '${u.nome}', '${u.role}')" style="background: #e68f1d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;"><i class="fa-solid fa-pen"></i> Editar</button>
+                    <button onclick="deletarUsuario('${u.id}', '${u.nome}')" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-trash"></i> Excluir</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        corpoTabela.innerHTML = `<tr><td colspan="4" style="color: red; text-align: center;">Erro ao carregar usuários.</td></tr>`;
+    }
+}
+
+function abrirModalUsuario() { document.getElementById('modal-novo-usuario').style.display = 'flex'; }
+function fecharModalUsuario() { document.getElementById('modal-novo-usuario').style.display = 'none'; }
+
+async function salvarNovoUsuario() {
+    const nome = document.getElementById('novo-nome').value;
+    const email = document.getElementById('novo-email').value;
+    const senha = document.getElementById('novo-senha').value;
+    const role = document.getElementById('novo-role').value;
+
+    if (!nome || !email || !senha) return alert("Preencha todos os campos!");
+
+    try {
+        await apiNISP.gerenciarUsuario('create', { nome, email, password: senha, role });
+        alert("Usuário criado com sucesso!");
+        fecharModalUsuario();
+        document.getElementById('novo-nome').value = ''; document.getElementById('novo-email').value = ''; document.getElementById('novo-senha').value = '';
+        carregarListaDeUsuarios();
+    } catch (error) { alert("Erro ao criar usuário: " + error.message); }
+}
+
+// Ações de Edição
+function abrirModalEditar(id, nome, role) {
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-nome').value = nome;
+    document.getElementById('edit-role').value = role;
+    document.getElementById('modal-editar-usuario').style.display = 'flex';
+}
+function fecharModalEditar() { document.getElementById('modal-editar-usuario').style.display = 'none'; }
+
+async function confirmarEdicaoUsuario() {
+    const id = document.getElementById('edit-id').value;
+    const nome = document.getElementById('edit-nome').value;
+    const role = document.getElementById('edit-role').value;
+
+    try {
+        await apiNISP.gerenciarUsuario('update', { userId: id, nome, role });
+        alert("Usuário atualizado com sucesso!");
+        fecharModalEditar();
+        carregarListaDeUsuarios();
+    } catch (error) { alert("Erro ao atualizar: " + error.message); }
+}
+
+// Ação de Excluir
+async function deletarUsuario(id, nome) {
+    if (confirm(`Atenção! Você tem certeza que deseja EXCLUIR definitivamente o acesso do usuário ${nome}?`)) {
+        try {
+            await apiNISP.gerenciarUsuario('delete', { userId: id });
+            alert("Usuário excluído com sucesso.");
+            carregarListaDeUsuarios();
+        } catch (error) { alert("Erro ao excluir: " + error.message); }
+    }
+}

@@ -18,6 +18,18 @@ nav {
     background-color: #004AAD;
 }
 
+#btn-menu-mobile {
+    display: none; /* Escondido no PC */
+    background-color: #E4AD36;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    font-size: 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
 menu {
     list-style-type: none;
     margin: 0;
@@ -565,21 +577,52 @@ main {
         margin: 10px auto;
     }
 
-    /* Ajuste da Navegação/Menu */
     nav {
-        flex-direction: column;
-        text-align: center;
+        flex-wrap: wrap;
         padding: 15px;
     }
 
-    nav .titulo {
+    .titulo {
+        flex-direction: column;
+        text-align: center;
+        width: 100%;
         margin-bottom: 15px;
     }
 
-    menu {
+    .titulo img {
         margin-right: 0;
-        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    #btn-menu-mobile {
+        display: block; /* Mostra o botão no celular */
         width: 100%;
+        margin-bottom: 10px;
+    }
+
+    #menu-navegacao {
+        display: none; /* Esconde o menu por padrão no celular */
+        flex-direction: column;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        gap: 10px;
+    }
+
+    #menu-navegacao.ativo {
+        display: flex !important; /* Mostra o menu quando tocado */
+    }
+
+    #area-restrita-menu {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px !important;
+    }
+
+    menu a, .logout-btn {
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
     }
 
     /* Ajuste dos Gráficos na Home */
