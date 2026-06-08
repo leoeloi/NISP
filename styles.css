@@ -15,12 +15,12 @@ nav {
     align-items: center;
     padding: 10px;
     margin-bottom: 20px;
-    background-color: #004AAD;
+    background-color: #083574;
 }
 
 #btn-menu-mobile {
-    display: none; /* Escondido no PC */
-    background-color: #E4AD36;
+    display: none;
+    background-color: #cc992a;
     color: white;
     border: none;
     padding: 10px 15px;
@@ -43,14 +43,14 @@ menu {
 menu a {
     text-decoration: none;
     color: white;
-    font-weight: bold;
+    font-weight: 400;
     padding: 8px 12px;
     border-radius: 5px;
     transition: background-color 0.3s ease;
 }
 
 menu a:hover {
-    background-color: #003366;
+    background-color: #1e314a;
 }
 
 .container-sobre {
@@ -86,6 +86,8 @@ main {
     margin-bottom: 20px;
 }
 
+#sobre-nisp,
+#resumo-geral,
 #painel-municipio, 
 #painel-cursos, 
 #painel-alunos, 
@@ -93,11 +95,7 @@ main {
 #controle-municipio, 
 #controle-alunos, 
 #gestao-usuarios {
-    display: none;
-}
-
-#resumo-geral {
-    display: block;
+    display: none; 
 }
 
 
@@ -114,7 +112,7 @@ main {
 
 .painel-mun-header {
     align-items: center;
-    background-color: #1e3c99;
+    background-color: #083574;
     color: white;
     padding: 20px;
 }
@@ -123,9 +121,9 @@ main {
     padding: 5px;
     margin-left: 10px;
     border-radius: 5px;
-    border: solid 1px #4a60a8;
+    border: solid 1px #50719c;
     cursor: pointer;
-    background-color: #1e3c99;
+    background-color: #083574;
     color: white;
     font-weight: bold;
     width: 100vw;
@@ -135,10 +133,14 @@ main {
     display: flex;
     align-items: center;
     font-weight: bold;
-    border: solid 0.1px #4a60a8;
+    border: solid 0.1px #083574;
     border-radius: 5px;
     padding: 10px;
-    background-color: #314d96;
+}
+
+.busca-mun, .territorio {
+    background-color: #083574;
+    border: solid 0.1px #083574;
 }
 
 #nome-mun{
@@ -244,7 +246,7 @@ main {
     width: 10px;
     height: 10px;
     margin-right: 15px;
-    color: #1e3c99;   
+    color: #38567d;   
 }
 
 .stats-mun {
@@ -278,20 +280,26 @@ main {
 }
 
 #alunos-unicos{
-    color: #4caf50;
+    color: #82c286;
 }
 
 #cobertura{
-    color: #2196f3;
+    color: #65a1d6;
 }
+
+.titulo-pagina, .titulo-cursos, .titulo-estatistica, .info-titulo h3 {
+    color: #2b4365;
+}
+
 
 .titulo-pagina {
     font-size: 20pt;
     font-weight: bold;
-    color: #152c6e;
     padding: 20px;
     border-bottom: solid 1px #d1d1d1;
 }
+
+
 
 .info-obs {
     margin-top: 15px;
@@ -312,7 +320,6 @@ main {
 .titulo-cursos {
     font-size: 16pt;
     font-weight: bold;
-    color: #152c6e;
     padding: 20px;
 }
 
@@ -379,7 +386,7 @@ main {
 .barra-progresso-preenchimento {
     width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, #1e3c99, #E4AD36);
+    background: linear-gradient(90deg, #083574, #c09e57);
     transition: width 1s ease-in-out;
 }
 
@@ -401,7 +408,6 @@ main {
 .titulo-estatistica {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #152c6e;
 }
 
 
@@ -455,12 +461,24 @@ main {
     padding: 15px 20px;
     cursor: pointer;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* Alinha os itens no início, um ao lado do outro */
+    gap: 12px;                  /* Define o espaço exato entre a seta e o texto */
     align-items: center;
-    list-style: none; /* Remove a seta padrão do navegador */
+    list-style: none;           /* Remove a seta padrão do navegador */
     background-color: #fdfdfd;
 }
 
+/* Como mudamos o alinhamento para 'flex-start', precisamos garantir que 
+   o contador (badge) nas outras telas continue no canto direito */
+.badge-contador {
+    margin-left: auto;          /* Empurra o badge para a direita automaticamente */
+    background: #1e3c99;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
 .header-edicao-clicavel::-webkit-details-marker {
     display: none; /* Remove seta no Chrome/Safari */
 }
@@ -479,7 +497,7 @@ main {
 
 .seta-expansao {
     transition: transform 0.3s ease;
-    color: #1e3c99;
+    color: #38567d;
 }
 
 /* Gira a seta quando o accordion abre */
@@ -538,7 +556,7 @@ main {
 }
 
 .logout-btn{
-    background-color: #E4AD36;
+    background-color: #cc992a;
     color: white;
     padding: 10px 20px;
     border: none;
@@ -549,7 +567,7 @@ main {
 
 .mySwiperNisp {
     width: 100%;
-    height: 400px; /* Altura fixa para manter o padrão */
+    height: 500px; /* Altura fixa para manter o padrão */
     background-color: #000;
 }
 
@@ -563,6 +581,114 @@ main {
 .mySwiperNisp {
     --swiper-theme-color: #E4AD36; /* Cor dourada dos seus botões */
     --swiper-navigation-size: 25px;
+}
+
+
+/* Estilo para o conteúdo dentro do FAQ */
+.faq-content {
+    padding: 15px 20px;
+    background-color: #f9f9f9;
+    border-top: 1px solid #eee;
+    line-height: 1.6;
+    color: #444;
+}
+
+.faq-content ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.faq-content li {
+    margin-bottom: 8px;
+}
+
+/* Garante que o Início apareça corretamente */
+#inicio {
+    display: block; /* Ele será o padrão ao carregar */
+}
+
+/* ==========================================
+   ESTILIZAÇÃO DA SEÇÃO SOBRE O NISP
+   ========================================== */
+
+.texto-destaque {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #152c6e;
+    background-color: #eef2ff;
+    padding: 15px 20px;
+    border-left: 5px solid #cc992a; /* Dourado dos botões */
+    border-radius: 4px;
+    margin-bottom: 25px;
+}
+
+.topico-nisp {
+    color: #083574;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 8px;
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.topico-nisp i {
+    color: #cc992a;
+}
+
+.lista-nisp {
+    list-style: none;
+    padding-left: 0;
+}
+
+.lista-nisp li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.lista-nisp li::before {
+    content: '\f0da'; /* Seta do FontAwesome */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    color: #1e3c99;
+}
+
+.tabela-nisp {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    margin-top: 20px;
+}
+
+.tabela-nisp thead {
+    background-color: #083574;
+    color: white;
+    text-align: left;
+}
+
+.tabela-nisp th, .tabela-nisp td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.tabela-nisp tbody tr:hover {
+    background-color: #f8fafe;
+}
+
+.tabela-nisp .center {
+    text-align: center;
+}
+
+.tabela-nisp .destaque-num {
+    font-weight: bold;
+    color: #152c6e;
 }
 
 /* --- AJUSTES PARA DISPOSITIVOS MÓVEIS --- */
@@ -625,28 +751,49 @@ main {
         box-sizing: border-box;
     }
 
-    /* Ajuste dos Gráficos na Home */
-    .container-graficos-topo {
+/* Ajuste dos Gráficos no Dashboard */
+    .container-graficos {
         flex-direction: column;
+        flex-wrap: nowrap;
     }
 
     .bloco-grafico-item {
         min-width: unset;
         width: 100%;
+        box-sizing: border-box;
     }
 
     /* Painel do Município (Grid vira coluna única) */
     .painel-mun-main {
-        grid-template-columns: 1fr; /* Informações e Stats um sobre o outro */
+        grid-template-columns: 1fr; 
     }
 
+    /* Mantém as estatísticas em linha horizontal e centralizadas */
     .stats-mun {
-        flex-wrap: wrap; /* Ícones de estatísticas quebram linha se necessário */
-        gap: 10px;
+        flex-wrap: nowrap !important;
+        gap: 5px;
+        padding: 15px 5px;
+        align-items: flex-start; /* Alinha os blocos pelo topo (números na mesma linha) */
     }
 
     .stats-item {
-        flex: 1 1 40%; /* Dois itens por linha no celular */
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center; /* Força a centralização do texto quebrado */
+    }
+
+    .stats-valor {
+        font-size: 7vw; /* Leve aumento para dar mais peso visual ao número */
+        line-height: 1;
+        margin-bottom: 5px;
+    }
+
+    .stats-titulo {
+        font-size: 2.2vw;
+        line-height: 1.2;
+        width: 100%;
     }
 
     #nome-mun {

@@ -1,146 +1,99 @@
-// ==========================================
-// api.js - MOTOR DE DADOS E SEGURANÇA (NISP)
-// ==========================================
+// api.js
+const SUPABASE_FUNCTIONS_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co/functions/v1';
 
-const apiNISP = {
-    // 1. BUSCA DE DADOS VIA EDGE FUNCTION (Chaves Protegidas)
-async buscarTabela(nomeTabela) {
-        const { data, error } = await supabaseClient.from(nomeTabela).select('*');
+// Função auxiliar para chamar as Edge Functions
+async function callFunction(functionName, body, requireAuth = true) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (requireAuth) {
+    const token = localStorage.getItem('supabase_token');
+    if (!token) throw new Error('Token não encontrado');
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
-        if (error) {
-            console.error(`Erro ao buscar ${nomeTabela}:`, error);
-            throw error;
-        }
-        return data;
-    },
+  const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/${functionName}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
 
-    // 2. AUTENTICAÇÃO E PERMISSÕES
-    async login(email, senha) {
-        // Faz o login no Supabase Auth
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: senha
-        });
-        
-        if (error) throw error;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na requisição');
+  }
+  return data;
+}
 
-        // Busca o nível de acesso na tabela 'users'
-        const { data: userData } = await supabaseClient
-            .from('users')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
-
-        return { user: data.user, role: userData?.role || 'user' };
-    },
-
-    // Executa a saída do sistema
-    async logout() {
-        const { error } = await supabaseClient.auth.signOut();
-        if (error) throw error;
-    },
-
-    // Verifica se o usuário atual tem o papel de admin na tabela 'users'
-    async verificarAdmin(userId) {
-        const { data } = await supabaseClient.from('users').select('role').eq('id', userId).single();
-        return data?.role === 'admin';
-    },
-
-    // 3. PROCESSAMENTO DE DADOS (Lógica do NISP)
-    processarDados(municipios, todosCursos, todosAlunos) {
-        let dataMap = {};
-        
-        municipios.forEach(mun => {
-            const cursosDoMun = todosCursos.filter(c => c.municipio_id === mun.id).map(curso => {
-                const alunosDoCurso = todosAlunos.filter(a => a.curso_id === curso.id);
-                return { ...curso, alunos: alunosDoCurso };
-            });
-
-            let nomesUnicos = new Set();
-            let certs = 0;
-
-            cursosDoMun.forEach(curso => {
-                curso.alunos.forEach(aluno => {
-                    if ((aluno.status || '').toLowerCase().includes('conclu')) {
-                        certs++;
-                        nomesUnicos.add(aluno.nome);
-                    }
-                });
-            });
-
-            dataMap[mun.id] = { 
-                ...mun, 
-                cursos: cursosDoMun,
-                totalConcluintes: nomesUnicos.size, 
-                totalCertificados: certs 
-            };
-        });
-        
-        return dataMap;
-    },
-
-    // 4. GESTÃO DE USUARIO E PERFIL
-
-    async mudarMinhaSenha(novaSenha) {
-        const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
-        if (error) throw error;
-    },
-
-    // Lista todos os usuários cadastrados (Apenas Admins conseguem por causa do RLS)
-    async listarUsuarios() {
-        const { data, error } = await supabaseClient.from('users').select('*').order('nome');
-        if (error) throw error;
-        return data;
-    },
-
-    // Altera o cargo de um usuário (Admin <-> Usuario)
-    async mudarCargoUsuario(userId, novoCargo) {
-        const { error } = await supabaseClient.from('users').update({ role: novoCargo }).eq('id', userId);
-        if (error) throw error;
-    },
-
-    // Chama a nova Edge Function para criar um usuário sem deslogar o Admin
-    async criarNovoUsuario(nome, email, senha, role) {
-            const { data, error } = await supabaseClient.functions.invoke('manage-users', {
-                body: { action: 'create', nome, email, password: senha, role }
-            });
-            
-            if (error) throw error; // Erro de conexão
-            
-            // Se a função rodou mas devolveu nossa mensagem de erro inteligente:
-            if (data && data.error) {
-                throw new Error(data.error); 
-            }
-            
-            return data;
-    },
-    
-    async buscarMeuPerfil() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return null;
-        const { data } = await supabaseClient.from('users').select('nome').eq('id', user.id).single();
-        return data;
-    },
-
-    async mudarMinhaSenha(novaSenha) {
-        const { error } = await supabaseClient.auth.updateUser({ password: novaSenha });
-        if (error) throw error;
-    },
-
-    async listarUsuarios() {
-        const { data, error } = await supabaseClient.from('users').select('*').order('nome');
-        if (error) throw error;
-        return data;
-    },
-
-    // A função generalizada que fala com a Edge Function
-    async gerenciarUsuario(action, payload) {
-        const { data, error } = await supabaseClient.functions.invoke('manage-users', {
-            body: { action: action, ...payload }
-        });
-        
-        if (error) throw error; 
-        if (data && data.error) throw new Error(data.error); 
-        return data;
+export const apiNISP = {
+  // Autenticação
+  async login(email, senha) {
+    const data = await callFunction('auth-login', { email, password: senha }, false);
+    if (data.session?.access_token) {
+      localStorage.setItem('supabase_token', data.session.access_token);
+      localStorage.setItem('supabase_refresh_token', data.session.refresh_token);
     }
+    return { user: data.user, role: data.role };
+  },
+
+  async logout() {
+    localStorage.removeItem('supabase_token');
+    localStorage.removeItem('supabase_refresh_token');
+    // Opcional: chamar uma função de logout no servidor
+  },
+
+  // Sessão
+  async getSession() {
+    const token = localStorage.getItem('supabase_token');
+    if (!token) return { user: null };
+    try {
+      return await callFunction('get-session', {}, true);
+    } catch {
+      return { user: null };
+    }
+  },
+
+  // Perfil
+  async buscarMeuPerfil() {
+    return await callFunction('get-meu-perfil', {});
+  },
+
+  async mudarMinhaSenha(novaSenha) {
+    return await callFunction('mudar-senha', { novaSenha });
+  },
+
+  // Dados específicos (usando as funções já existentes)
+  async getCidadesAtendidas() {
+    return await callFunction('get-cidades-atendidas', {});
+  },
+
+  async getEstatisticasGlobais() {
+    return await callFunction('get-estatisticas-globais', {});
+  },
+
+  async getEdicoes() {
+    return await callFunction('get-edicoes', {});
+  },
+
+  async getAlunosCompletos() {
+    return await callFunction('get-alunos-completos', {});
+  },
+
+  async getMunicipioCompleto(id) {
+    return await callFunction('get-municipio-completo', { id });
+  },
+
+  // Gestão de usuários
+  async listarUsuarios() {
+    return await callFunction('manage-users', { action: 'list' });
+  },
+
+  async gerenciarUsuario(action, payload) {
+    return await callFunction('manage-users', { action, ...payload });
+  },
+
+  // Método genérico (se ainda precisar)
+  async buscarTabela(nomeTabela, filtros = {}) {
+    return await callFunction('buscar-tabela', { tabela: nomeTabela, filtros });
+  }
 };

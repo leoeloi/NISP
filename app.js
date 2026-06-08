@@ -1,11 +1,6 @@
 // 1. CONFIGURAÇÃO INICIAL E VARIÁVEIS GLOBAIS
+import { apiNISP } from "./api.js";
 
-const SUPABASE_URL = 'https://vwrpcilvurjroigbaoxg.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cnBjaWx2dXJqcm9pZ2Jhb3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDM4NTYsImV4cCI6MjA4NTE3OTg1Nn0.sFOB6HQf1yKPeT3xcsG3rhgIn9exJER4yaGkfyRjWSo';
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let loadedData = {};
 let listaGlobalAlunos = [];
 let chartEdicao = null;
 let chartBarras = null;
@@ -18,21 +13,25 @@ async function init() {
     console.log("Iniciando carregamento...");
     try {
         // Busca os dados através da ponte segura
-        const [municipios, todosCursos, todosAlunos] = await Promise.all([
-            apiNISP.buscarTabela('municipios'),
-            apiNISP.buscarTabela('cursos'),
-            apiNISP.buscarTabela('alunos')
-        ]);
-
-        // Processa os dados
-        loadedData = apiNISP.processarDados(municipios, todosCursos, todosAlunos);
-
-        // Atualiza a interface com os dados
+        const municipios = await apiNISP.buscarTabela('municipios');
         popularSelectMunicipios(municipios);
-        atualizarEstatisticasGlobais();
-        popularPainelEdicoes();
-        prepararListaGlobalAlunos();
-        processarCidadesAtendidas();
+         
+        // Carrega estatísticas globais    
+        const estatisticas = await apiNISP.getEstatisticasGlobais();
+        renderizarEstatisticas(estatisticas); 
+        
+        // Carrega edições para o painel de cursos
+        const edicoes = await apiNISP.getEdicoes();
+        renderizarEdicoes(edicoes);
+
+        // Carrega alunos completos para a busca
+        const alunos = await apiNISP.getAlunosCompletos();
+        listaGlobalAlunos = alunos;
+        preencherFiltrosAlunos();
+        renderizarTabelaAlunos(alunos);
+
+        // Carrega cidades atendidas
+        await processarCidadesAtendidas();
 
     } catch (err) {
         console.error("Erro crítico no carregamento:", err);
@@ -44,17 +43,21 @@ async function init() {
 // ==========================================
 
 async function verificarSessao() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { user, role} = await apiNISP.getSession();
     
-    if (session) {
+    if (user) {
         mostrarSistema();
-        verificarPermissoes(); //Verifica se é admin
+        if (role === 'admin') {
+            document.getElementById('gestao-usuarios-link').style.display = 'block';
+            carregarListaDeUsuarios();
+        }
+
     } else {
-        // 1. Esconde os itens privados do menu
+        // Esconde os itens privados do menu
         document.getElementById('tela-login').style.display = 'none';
         document.getElementById('area-restrita-menu').style.display = 'none';
         document.getElementById('btn-login-abrir').style.display = 'block';
-        navegarPara('sobre-nisp');
+        navegarPara('inicio');
     }
 }
 
@@ -73,7 +76,11 @@ async function realizarLogin() {
         mostrarSistema();
     } catch (error) {
         erroMsg.style.display = 'block';
-        erroMsg.textContent = "Erro ao acessar: " + error.message;
+        const msg = error.message.toLowerCase();
+        
+        erroMsg.textContent = msg.includes('credentials') 
+            ? "Credenciais inválidas, tente novamente ou solicite auxilio ao administrador."
+            : `Erro ao acessar: ${error.message}`;
     }
 }
 
@@ -82,7 +89,6 @@ async function realizarLogout() {
     document.getElementById('area-restrita-menu').style.display = 'none';
     document.getElementById('btn-login-abrir').style.display = 'block';
     
-    loadedData = {};
     listaGlobalAlunos = [];
     
     navegarPara('sobre-nisp');
@@ -90,15 +96,6 @@ async function realizarLogout() {
 }
 
 async function mostrarSistema() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    
-    if (!session) {
-        console.error("Tentativa de acesso não autorizada detectada.");
-        alert("Acesso Negado: Nenhuma sessão válida encontrada.");
-        window.location.reload(); 
-        return; 
-    }
-
     const telaLogin = document.getElementById('tela-login');
     if (telaLogin) telaLogin.style.display = 'none';
     
@@ -113,18 +110,7 @@ async function mostrarSistema() {
     carregarDadosPerfil(); 
     resetarTimer();
 
-    navegarPara('resumo-geral'); 
-}
-
-async function verificarPermissoes() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-        const isAdmin = await apiNISP.verificarAdmin(user.id);
-        if (isAdmin) {
-            document.getElementById('gestao-usuarios-link').style.display = 'block';
-            if (typeof carregarListaDeUsuarios === 'function') carregarListaDeUsuarios();
-        }
-    }
+    navegarPara('inicio'); 
 }
 
 // ==========================================
@@ -132,33 +118,43 @@ async function verificarPermissoes() {
 // ==========================================
 
 function navegarPara(sectionId) {
-    // 1. Identifica as seções
     const secoes = [
-        'resumo-geral', 'sobre-nisp', 'painel-municipio', 
-        'painel-cursos', 'painel-busca-alunos', 'gestao-usuarios', 'perfil-pessoal' 
+        'inicio', 'resumo-geral', 'sobre-nisp', 'painel-municipio', 
+        'painel-cursos', 'painel-busca-alunos', 'gestao-usuarios', 'perfil-pessoal', 'tela-login' 
     ];
 
-    // 2. Oculta todas as seções
     secoes.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
 
-    // 3. Exibe a seção desejada
     const secaoAlvo = document.getElementById(sectionId);
     if (secaoAlvo) {
         secaoAlvo.style.display = 'block';
         window.scrollTo(0, 0);
         
+        // Força o estado 'todos' e carrega os dados globais ao entrar no dash
+        if (sectionId === 'resumo-geral') {
+            const select = document.getElementById('municipio-select');
+            if (select) select.value = 'todos';
+            carregarEstatisticasTodosMunicipios();
+        }
+        
         if (sectionId === 'painel-municipio') {
-            carregarDadosMunicipio("Abaíra");
+            const select = document.getElementById('municipio-select');
+            if (select && select.value) {
+                if (select.value === 'todos') {
+                    carregarEstatisticasTodosMunicipios();
+                } else {
+                    carregarDadosMunicipio(select.value);
+                }
+            }
         }
         if (sectionId === 'painel-cursos' && typeof popularPainelEdicoes === 'function') {
             popularPainelEdicoes();
         }
-
         if (sectionId === 'painel-busca-alunos') {
-            prepararListaGlobalAlunos();
+            // Caso precise de preparações adicionais
         }
     }
 
@@ -173,9 +169,13 @@ function navegarPara(sectionId) {
 function irParaMunicipio(id) {
     const select = document.getElementById('municipio-select');
     if (select) {
-        navegarPara('painel-municipio'); // Garante que a seção de municípios esteja visível
-        select.value = id;
-        carregarDadosMunicipio(id);
+        // 1. Atualiza o valor do select PRIMEIRO
+        select.value = id; 
+        
+        // 2. Chama a navegação (que agora vai ler o ID correto e carregar os dados certos)
+        navegarPara('painel-municipio'); 
+        
+        // 3. Rola a tela para o topo do painel
         document.getElementById('painel-municipio').scrollIntoView({ behavior: 'smooth' });
     }
 }
@@ -193,9 +193,17 @@ function popularSelectMunicipios(municipios) {
     const select = document.getElementById('municipio-select');
     if (!select) return;
     
-    // Evita duplicar opções caso a função rode duas vezes
-    select.innerHTML = '<option value="">Selecione um município...</option>'; 
+    // Verificação de segurança: checa se realmente recebemos uma lista
+    if (!Array.isArray(municipios)) {
+        console.error("Erro ao carregar municípios para o select. Resposta da API:", municipios);
+        select.innerHTML = '<option value="todos">Erro ao carregar</option>';
+        return;
+    }
     
+    // Define a opção padrão como "Todos"
+    select.innerHTML = '<option value="todos" selected>Todos os Municípios</option>'; 
+    
+    // Ordena alfabeticamente e cria as opções
     municipios.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(mun => {
         const option = document.createElement('option');
         option.value = mun.id;
@@ -204,15 +212,85 @@ function popularSelectMunicipios(municipios) {
     });
 }
 
-async function carregarDadosMunicipio(municipioId) {
-    const mun = loadedData[municipioId];
-    if (!mun) return;
+
+async function carregarEstatisticasTodosMunicipios() {
+    document.getElementById('nome-mun').textContent = "Todos os Municípios";
+    document.getElementById('territorio-mun').textContent = "Estado da Bahia";
+
+    // Mostra o quadro de Efetivo (que estava escondido na versão anterior)
+    const infoEfetivoEl = document.getElementById('info-efetivo');
+    if(infoEfetivoEl) infoEfetivoEl.style.display = 'flex';
+    
+    // ESCONDE o quadro de Contatos (não faz sentido ter contatos do Estado inteiro aqui)
+    const contatoMunEl = document.querySelector('.contato-mun');
+    if(contatoMunEl) contatoMunEl.style.display = 'none';
+
+    document.getElementById('observacoes').textContent = "Visualizando dados consolidados de todos os municípios do Estado da Bahia.";
 
     try {
-        // Atualiza Informações do Município
+        const estatisticas = await apiNISP.getEstatisticasGlobais();
+        
+        // Aplica a formatação de números grandes (ex: 15.000.000)
+        document.getElementById('populacao').textContent = estatisticas.somaPopulacao.toLocaleString('pt-BR');
+        document.getElementById('efetivo').textContent = estatisticas.somaEfetivo.toLocaleString('pt-BR');
+
+        // Atualiza os badges visuais de Guarda com as contagens
+        const styleBadge = "color: #1e3c99; background-color: #eef2ff; padding: 4px 10px; border-radius: 20px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;";
+        
+        const elPossui = document.getElementById('possui-guarda');
+        if (elPossui) { 
+            elPossui.innerHTML = `<i class="fa-solid fa-shield-halved"></i> ${estatisticas.totalMunicipiosComGuarda} Municípios`; 
+            elPossui.style.cssText = styleBadge; 
+        }
+        
+        const elArmada = document.getElementById('guarda-armada');
+        if (elArmada) { 
+            elArmada.innerHTML = `<i class="fa-solid fa-gun"></i> ${estatisticas.totalGuardaArmada} Municípios`; 
+            elArmada.style.cssText = styleBadge; 
+        }
+
+        // Estatísticas da barra inferior
+        let totalCertificacoes = 0;
+        if (estatisticas.certsPorAno) {
+            totalCertificacoes = Object.values(estatisticas.certsPorAno).reduce((acc, curr) => acc + curr, 0);
+        }
+
+        document.getElementById('certificacoes').textContent = totalCertificacoes;
+        document.getElementById('alunos-unicos').textContent = estatisticas.totalAlunosUnicos;
+        document.getElementById('cobertura').textContent = `${estatisticas.coberturaEfetivo}%`;
+
+        // Limpa a lista de cursos detalhados e avisa o usuário
+        const container = document.getElementById('lista-cursos-container');
+        if (container) {
+            container.innerHTML = `
+                <div style="background: white; padding: 30px; text-align: center; border-radius: 8px; border: 1px dashed #ccc; color: #666;">
+                    <i class="fa-solid fa-map-location-dot" style="font-size: 2rem; color: #1e3c99; margin-bottom: 10px;"></i>
+                    <p style="margin: 0; font-size: 1.1rem;">Selecione um município específico no menu acima para ver o detalhamento dos cursos e a lista nominal de alunos.</p>
+                </div>`;
+        }
+    } catch (error) {
+        console.error("Erro ao processar visão geral:", error);
+    }
+}
+
+async function carregarDadosMunicipio(municipioId) {
+    if (!municipioId || municipioId === 'todos') return; 
+
+    try {
+        // MOSTRA novamente o quadro de contatos (se estivesse escondido pela visão global)
+        const contatoMunEl = document.querySelector('.contato-mun');
+        if (contatoMunEl) contatoMunEl.style.display = 'block';
+
+        const mun = await apiNISP.getMunicipioCompleto(municipioId);
+        
+        if (!mun || mun.error) {
+            console.error("Município não encontrado ou erro na API");
+            return;
+        }
+
         document.getElementById('nome-mun').textContent = mun.nome;
         document.getElementById('territorio-mun').textContent = mun.territorio || '-';
-        document.getElementById('populacao').textContent = mun.populacao || '-';
+        document.getElementById('populacao').textContent = mun.populacao ? parseInt(mun.populacao).toLocaleString('pt-BR') : '-';
         document.getElementById('prefeito').textContent = mun.prefeito || '-';
         document.getElementById('email-pref').textContent = mun.email_pref || '-';
         document.getElementById('tel-pref').textContent = mun.telefone_pref || '-';
@@ -222,23 +300,26 @@ async function carregarDadosMunicipio(municipioId) {
         
         document.getElementById('observacoes').textContent = mun.obs_mun || 'Nenhuma observação.';
 
-        // Lógica do Efetivo e Cobertura
-        const efetivo = parseInt(mun.efetivo) || 0;
-        const concluintes = mun.totalConcluintes || 0;
+        // ---------------------------------------------------------
+        // Consome as estatísticas diretamente do Backend!
+        // ---------------------------------------------------------
+        const stats = mun.estatisticas || { totalCertificados: 0, totalConcluintes: 0, cobertura: "0.0" };
         
+        const efetivo = parseInt(mun.efetivo) || 0;
+        const infoEfetivoEl = document.getElementById('info-efetivo');
+
         if (efetivo > 0) {
-            document.getElementById('info-efetivo').style.display = 'flex';
-            document.getElementById('efetivo').textContent = efetivo;
-            document.getElementById('cobertura').textContent = `${((concluintes / efetivo) * 100).toFixed(1)}%`;
+            if (infoEfetivoEl) infoEfetivoEl.style.display = 'flex';
+            document.getElementById('efetivo').textContent = efetivo.toLocaleString('pt-BR');
+            document.getElementById('cobertura').textContent = `${stats.cobertura}%`;
         } else {
-            document.getElementById('info-efetivo').style.display = 'none';
+            if (infoEfetivoEl) infoEfetivoEl.style.display = 'none';
             document.getElementById('cobertura').textContent = '0.0%';
         }
 
-        document.getElementById('certificacoes').textContent = mun.totalCertificados;
-        document.getElementById('alunos-unicos').textContent = concluintes;
+        document.getElementById('certificacoes').textContent = stats.totalCertificados;
+        document.getElementById('alunos-unicos').textContent = stats.totalConcluintes;
 
-        // Atualização dos Badges (Sim/Não)
         const atualizarBadge = (id, check) => {
             const el = document.getElementById(id);
             if (check) {
@@ -249,14 +330,14 @@ async function carregarDadosMunicipio(municipioId) {
                 el.style.cssText = "color: #dc3545; background-color: #f8d7da; padding: 4px 10px; border-radius: 20px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;";
             }
         };
-
+        
         atualizarBadge('possui-guarda', mun.possui_guarda);
         atualizarBadge('guarda-armada', mun.guarda_armada);
 
         popularListaCursos(mun.cursos);
 
     } catch (err) {
-        console.error("Erro ao popular interface:", err);
+        console.error("Erro ao carregar município:", err);
     }
 }
 
@@ -275,22 +356,19 @@ function popularListaCursos(cursos) {
             (a.status || '').toLowerCase().includes('conclu')
         ).length;
 
-        //Cores do Status do Curso ---
         const statusTexto = (curso.status || 'N/A').trim().toUpperCase();
-        let corFundoStatus = '#6c757d'; // Cinza padrão para status desconhecidos
-        let corTextoStatus = '#ffffff'; // Texto branco padrão
+        let corFundoStatus = '#6c757d'; 
+        let corTextoStatus = '#ffffff'; 
 
         if (statusTexto === 'ATENDIDO') {
-            corFundoStatus = '#1361af'; // Azul
+            corFundoStatus = '#1361af'; 
         } else if (statusTexto === 'EM ANDAMENTO') {
-            corFundoStatus = '#ffc107'; // Amarelo
-            corTextoStatus = '#000000'; // Texto preto para garantir boa leitura no fundo amarelo
+            corFundoStatus = '#ffc107'; 
+            corTextoStatus = '#000000'; 
         } else if (statusTexto === 'NÃO ATENDIDO' || statusTexto === 'NAO ATENDIDO') {
-            corFundoStatus = '#dc3545'; // Vermelho
+            corFundoStatus = '#dc3545'; 
         }
-        // ---------------------------------------------
 
-        // Lógica para o badge de convite (ac_convite) corrigida
         let badgeConvite = '-'; 
         if (curso.ac_convite !== null && curso.ac_convite !== undefined && curso.ac_convite !== '') {
             const valorConvite = String(curso.ac_convite).trim().toUpperCase();
@@ -344,89 +422,104 @@ function popularListaCursos(cursos) {
     }).join('');
 }
 
-function popularPainelEdicoes() {
+function renderizarEdicoes(edicoes) {
     const container = document.getElementById('lista-cursos-edicoes');
     if (!container) return;
 
-    const todasEdicoes = [];
-    
-    Object.values(loadedData).forEach(mun => {
-        mun.cursos.forEach(curso => {
-            const identificador = `${curso.curso} - ${curso.ano || 'S/D'}`;
-            let edicaoExistente = todasEdicoes.find(e => e.id_edicao === identificador);
-            
-            if (!edicaoExistente) {
-                edicaoExistente = {
-                    id_edicao: identificador,
-                    nome: curso.curso,
-                    ano: curso.ano,
-                    municipios: []
-                };
-                todasEdicoes.push(edicaoExistente);
-            }
-
-            edicaoExistente.municipios.push({
-                id: mun.id, // Guardamos o ID para o clique
-                nome: mun.nome,
-                qtd: curso.alunos.length
-            });
-        });
+    // 1. Ordenação cronológica decrescente (mais recentes no topo)
+    const edicoesOrdenadas = [...edicoes].sort((a, b) => {
+        const getAnoMes = (str) => {
+            const match = (str || '').match(/(\d{2})\/(\d{4})/);
+            return match ? match[2] + match[1] : "000000";
+        };
+        return getAnoMes(b.nome).localeCompare(getAnoMes(a.nome)); 
     });
 
-    todasEdicoes.sort((a, b) => (b.ano || 0) - (a.ano || 0));
+    // 2. Renderização usando a lista ordenada
+    container.innerHTML = edicoesOrdenadas.map(edicao => {
+        let totalAtendidos = 0;
+        let totalNaoAtendidos = 0;
+        let totalConcluintes = 0;
 
-    // Renderização com Accordion e Link de navegação
-    container.innerHTML = todasEdicoes.map(edicao => `
-        <details class="card-edicao-expansivel">
-            <summary class="header-edicao-clicavel">
-                <div class="info-titulo">
-                    <i class="fa-solid fa-chevron-right seta-expansao"></i>
-                    <h3>${edicao.nome} - ${edicao.ano || ''}</h3>
-                </div>
-                <span class="badge-contador">${edicao.municipios.length} Municípios</span>
-            </summary>
-            
-            <div class="grid-municipios-participantes">
-                ${edicao.municipios.sort((a, b) => a.nome.localeCompare(b.nome)).map(m => `
-                    <div class="item-municipio-link" onclick="irParaMunicipio('${m.id}')">
-                        <span>${m.nome}</span>
-                        <span class="contador-alunos-mun">${m.qtd}</span>
+        if (edicao.municipios && Array.isArray(edicao.municipios)) {
+            edicao.municipios.forEach(m => {
+                const statusMun = (m.status || '').trim().toUpperCase();
+                if (statusMun === 'ATENDIDO') totalAtendidos++;
+                else if (statusMun === 'NÃO ATENDIDO' || statusMun === 'NAO ATENDIDO') totalNaoAtendidos++;
+                
+                totalConcluintes += parseInt(m.concluintes || 0); 
+            });
+        }
+
+        return `
+            <details class="card-edicao-expansivel">
+                <summary class="header-edicao-clicavel" style="flex-wrap: wrap; gap: 15px;">
+                    <div class="info-titulo" style="flex: 1; min-width: 250px;">
+                        <i class="fa-solid fa-chevron-right seta-expansao"></i>
+                        <h3>${edicao.nome}</h3> </div>
+                    
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <span class="badge-contador" style="background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1;" title="Total de Municípios Envolvidos">
+                            ${edicao.municipios.length} Municípios
+                        </span>
+                        <span class="badge-contador" style="background: #cce5ff; color: #004085; border: 1px solid #b8daff;" title="Municípios Atendidos">
+                            Atendidos: ${totalAtendidos}
+                        </span>
+                        <span class="badge-contador" style="background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;" title="Municípios Não Atendidos">
+                            Não Atendidos: ${totalNaoAtendidos}
+                        </span>
+                        <span class="badge-contador" style="background: #d4edda; color: #155724; border: 1px solid #c3e6cb;" title="Total de Alunos Concluintes">
+                            Concluintes: ${totalConcluintes}
+                        </span>
                     </div>
-                `).join('')}
-            </div>
-        </details>
-    `).join('');
+                </summary>
+                
+                <div class="grid-municipios-participantes">
+                    ${edicao.municipios.sort((a, b) => a.nome.localeCompare(b.nome)).map(m => {
+                        const qtdConcluintes = m.concluintes !== undefined ? parseInt(m.concluintes) : 0;
+                        const temConcluinte = qtdConcluintes > 0;
+                        
+                        const bgBadge = temConcluinte ? '#d4edda' : '#f8d7da';
+                        const corTexto = temConcluinte ? '#155724' : '#721c24';
+                        const borderBadge = temConcluinte ? '#c3e6cb' : '#f5c6cb';
+                        const icone = temConcluinte ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+
+                        return `
+                        <div class="item-municipio-link cursor-pointer" data-id="${m.id}">
+                            <span style="color: #444; font-weight: 500;">${m.nome}</span>
+                            <span class="contador-alunos-mun" title="${temConcluinte ? 'Concluintes' : 'Nenhum concluinte'}" 
+                                style="background: ${bgBadge}; color: ${corTexto}; border: 1px solid ${borderBadge}; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">
+                                ${qtdConcluintes} ${icone}
+                            </span>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </details>
+        `;
+    }).join('');
 }
 
-function prepararListaGlobalAlunos() {
-    listaGlobalAlunos = [];
-    Object.values(loadedData).forEach(mun => {
-        mun.cursos.forEach(curso => {
-            curso.alunos.forEach(aluno => {
-                listaGlobalAlunos.push({
-                    ...aluno,
-                    nomeMunicipio: mun.nome,
-                    nomeEdicao: `${curso.curso} - ${curso.ano || 'S/D'}`
-                });
-            });
-        });
-    });
-    renderizarTabelaAlunos(listaGlobalAlunos);
-}
+
 
 function renderizarTabelaAlunos(dados) {
     const corpoTabela = document.getElementById('tabela-corpo-alunos');
     if (!corpoTabela) return;
 
+    // Atualiza o contador dinamicamente
+    const elContador = document.getElementById('contador-resultados-alunos');
+    if (elContador) {
+        elContador.textContent = `${dados.length} ${dados.length === 1 ? 'aluno encontrado' : 'alunos encontrados'}`;
+    }
+
     if (dados.length === 0) {
-        corpoTabela.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Nenhum aluno encontrado.</td></tr>';
+        corpoTabela.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center;">Nenhum aluno encontrado.</td></tr>';
         return;
     }
 
     corpoTabela.innerHTML = dados.map(aluno => `
         <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 12px;">${aluno.nome}</td>
-            <td style="padding: 12px;">${aluno.cpf || '-'}</td>
             <td style="padding: 12px; font-size: 0.85rem;">${aluno.nomeEdicao}</td>
             <td style="padding: 12px;">${aluno.nomeMunicipio}</td>
             <td style="padding: 12px;">
@@ -438,104 +531,139 @@ function renderizarTabelaAlunos(dados) {
     `).join('');
 }
 
-function processarCidadesAtendidas() {
-const ul = document.getElementById('cidades-atendidas-ul');
+async function processarCidadesAtendidas() {
+    const ul = document.getElementById('cidades-atendidas-ul');
     if (!ul) return;
 
-    // 1. Criar um Set para armazenar IDs únicos de municípios presentes na tabela cursos
-    const idsMunicipiosAtendidos = new Set();
-    
-    Object.values(loadedData).forEach(mun => {
-        if (mun.cursos && mun.cursos.length > 0) {
-            const temCursoAtendido = mun.cursos.some(curso => curso.status === "Atendido");
-                if (temCursoAtendido){
-                    idsMunicipiosAtendidos.add(mun.id);
-                }
+    try {
+        const cidades = await apiNISP.getCidadesAtendidas(); 
+        ul.innerHTML = ''; 
+
+        if (cidades.length === 0) {
+            ul.innerHTML = '<li>Nenhuma cidade encontrada.</li>';
+            return;
         }
+
+        cidades.forEach(cidade => {
+            const li = document.createElement('li');
+            li.style.display = "flex";
+            li.style.alignItems = "center";
+            li.style.padding = "8px 0";
+            li.style.borderBottom = "1px solid #eee";
+            li.innerHTML = `
+                <i class="fa-solid fa-location-dot" style="color: #1e3c99; margin-right: 10px;"></i>
+                <span>${cidade}</span>
+            `;
+            ul.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar cidades atendidas:', error);
+        ul.innerHTML = '<li>Erro ao carregar.</li>';
+    }
+}
+
+function preencherFiltrosAlunos() {
+    const munSet = new Set(), edSet = new Set(), statusSet = new Set();
+    
+    listaGlobalAlunos.forEach(a => {
+        if (a.nomeMunicipio) munSet.add(a.nomeMunicipio);
+        if (a.nomeEdicao) edSet.add(a.nomeEdicao);
+        if (a.status) statusSet.add(a.status);
     });
 
-    // 2. Converter IDs em nomes e ordenar
-    const nomesCidades = Array.from(idsMunicipiosAtendidos)
-        .map(id => loadedData[id].nome)
-        .sort();
+    const preencherSelect = (id, set, label) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.innerHTML = `<option value="">${label}</option>` + 
+            [...set].sort().map(val => `<option value="${val}">${val}</option>`).join('');
+    };
 
-    // 3. Limpar e popular a UL
-    ul.innerHTML = '';
+    preencherSelect('filtro-municipio', munSet, 'Todos os Municípios');
+    preencherSelect('filtro-edicao', edSet, 'Todas as Edições');
+    preencherSelect('filtro-status', statusSet, 'Todos os Status');
+}
 
-    if (nomesCidades.length === 0) {
-        ul.innerHTML = '<li>Nenhuma cidade encontrada.</li>';
-        return;
+function aplicarFiltrosAlunos() {
+    const termo = (document.getElementById('filtro-nome-cpf')?.value || '').toLowerCase().trim();
+    const mun = document.getElementById('filtro-municipio')?.value || '';
+    const ed = document.getElementById('filtro-edicao')?.value || '';
+    const st = document.getElementById('filtro-status')?.value || '';
+    const aptos = document.getElementById('filtro-aptos-avancado')?.checked;
+
+    let filtrados = listaGlobalAlunos;
+
+    // Lógica Exclusiva: Aptos ao Avançado
+    if (aptos) {
+        const historico = {};
+        
+        // 1. Mapeia o histórico de cada aluno usando CPF ou Nome
+        listaGlobalAlunos.forEach(a => {
+            const chave = a.cpf || a.nome;
+            if (!historico[chave]) historico[chave] = { temBasico: false, temAvancado: false };
+            
+            const isConcluido = (a.status || '').toLowerCase().includes('conclu');
+            // Remove acentos para evitar falhas por digitação divergente no banco
+            const nomeEd = (a.nomeEdicao || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            if (isConcluido && nomeEd.includes('BASICO')) historico[chave].temBasico = true;
+            if (isConcluido && nomeEd.includes('AVANCADO')) historico[chave].temAvancado = true;
+        });
+
+        // 2. Retém na lista apenas as chaves que possuem Básico, mas não possuem Avançado
+        filtrados = filtrados.filter(a => {
+            const chave = a.cpf || a.nome;
+            return historico[chave].temBasico && !historico[chave].temAvancado;
+        });
     }
 
-    nomesCidades.forEach(cidade => {
-        const li = document.createElement('li');
-        li.style.display = "flex";
-        li.style.alignItems = "center";
-        li.style.padding = "8px 0";
-        li.style.borderBottom = "1px solid #eee";
-        li.innerHTML = `
-            <i class="fa-solid fa-location-dot" style="color: #1e3c99; margin-right: 10px;"></i>
-            <span>${cidade}</span>
-        `;
-        ul.appendChild(li);
-    });
+    // Filtros Textuais e Dropdowns
+    if (termo) filtrados = filtrados.filter(a => (a.nome || '').toLowerCase().includes(termo) || (a.cpf || '').toLowerCase().includes(termo));
+    if (mun) filtrados = filtrados.filter(a => a.nomeMunicipio === mun);
+    if (ed) filtrados = filtrados.filter(a => a.nomeEdicao === ed);
+    if (st) filtrados = filtrados.filter(a => a.status === st);
+
+    renderizarTabelaAlunos(filtrados);
 }
 
 // ==========================================
 // 6. GRÁFICOS (CHART.JS) E ESTATÍSTICAS
 // ==========================================
-function atualizarEstatisticasGlobais() {
-    const listaMunicipios = Object.values(loadedData);
-    const munComGuarda = listaMunicipios.filter(m => m.possui_guarda === true);
-    const certsPorEdicao = {};
-    const certsPorAnoBruto = {};
-    
-    munComGuarda.forEach(mun => {
-        mun.cursos.forEach(curso => {
-            const concluintes = curso.alunos.filter(a => (a.status || '').toLowerCase().includes('conclu')).length;
-            if (concluintes === 0) return; 
 
-            // Dados para gráfico de edição
-            const idEdicao = `${curso.curso}`;
-            certsPorEdicao[idEdicao] = (certsPorEdicao[idEdicao] || 0) + concluintes;
-
-            // Dados para gráfico de anos
-            const ano = curso.ano || "S/D";
-            certsPorAnoBruto[ano] = (certsPorAnoBruto[ano] || 0) + concluintes;
-        });
-    });
-    
-    renderizarBarrasEdicao(certsPorEdicao);
-
-    const certsPorAnoFiltrado = {};
-    Object.keys(certsPorAnoBruto).forEach(ano => {
-        if (certsPorAnoBruto[ano] > 0) certsPorAnoFiltrado[ano] = certsPorAnoBruto[ano];
-    });
-
-    renderizarBarrasAno(certsPorAnoFiltrado);
-
-    // Barra de Progresso
-    const atendidosGeral = munComGuarda.filter(m => m.totalConcluintes > 0).length;
-    const totalGeralGCM = munComGuarda.length;
-    const percGeral = totalGeralGCM > 0 ? ((atendidosGeral / totalGeralGCM) * 100).toFixed(1) : 0;
+function renderizarEstatisticas(estatisticas) {
+    renderizarBarrasEdicao(estatisticas.certsPorEdicao);
+    renderizarBarrasAno(estatisticas.certsPorAno);
 
     const elementoBarra = document.getElementById('barra-preenchimento');
     if (elementoBarra) {
-        elementoBarra.style.width = `${percGeral}%`;
-        document.getElementById('texto-progresso-percentual').textContent = `${percGeral}%`;
-        document.getElementById('atendidos-count').textContent = atendidosGeral;
-        document.getElementById('total-gcm-count').textContent = totalGeralGCM;
+        elementoBarra.style.width = `${estatisticas.percGeral}%`;
+        document.getElementById('texto-progresso-percentual').textContent = `${estatisticas.percGeral}%`;
+        document.getElementById('atendidos-count').textContent = estatisticas.atendidos;
+        document.getElementById('total-gcm-count').textContent = estatisticas.totalMunicipiosComGuarda;
     }
+
+    // Renderiza os dados globais diretamente no painel do dashboard
+    let totalCertificacoes = estatisticas.certsPorAno ? Object.values(estatisticas.certsPorAno).reduce((a, b) => a + b, 0) : 0;
+    document.getElementById('dash-certificacoes').textContent = totalCertificacoes;
+    document.getElementById('dash-alunos-unicos').textContent = estatisticas.totalAlunosUnicos;
+    document.getElementById('dash-cobertura').textContent = `${estatisticas.coberturaEfetivo}%`;
 }
-
-
 
 function renderizarBarrasEdicao(dados) {
     const ctx = document.getElementById('grafico-barras-edicao')?.getContext('2d');
     if (!ctx) return;
     if (chartEdicao) chartEdicao.destroy();
-    const edicoes = Object.keys(dados);
+    
+    // Extrai o MM/YYYY usando Regex, inverte para YYYYMM e ordena cronologicamente
+    const edicoes = Object.keys(dados).sort((a, b) => {
+        const getAnoMes = (str) => {
+            const match = str.match(/(\d{2})\/(\d{4})/);
+            return match ? match[2] + match[1] : "000000";
+        };
+        return getAnoMes(a).localeCompare(getAnoMes(b));
+    });
+
     const valores = edicoes.map(e => dados[e]);
+    
     chartEdicao = new Chart(ctx, {
         type: 'bar',
         plugins: [ChartDataLabels],
@@ -566,13 +694,12 @@ function renderizarBarrasAno(dados) {
     });
 }
 
-
 // ==========================================
 // 7. EVENTOS DE CARREGAMENTO (CONSOLIDADOS)
 // ==========================================
+
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // 1. Checagem de Sessão (Inicia o sistema se logado)
+    // 1. Checagem de Sessão
     verificarSessao();
 
     // 2. Inicialização do Carrossel (Swiper)
@@ -585,24 +712,111 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. Listeners de Interface
+    // 3. Bind dos Eventos Estáticos da Interface
+    
+    // Login & Logout
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) formLogin.addEventListener('submit', (e) => {
+        e.preventDefault();
+        realizarLogin();
+    });
+
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', realizarLogout);
+
+    const btnLoginAbrir = document.getElementById('btn-login-abrir');
+    if (btnLoginAbrir) btnLoginAbrir.addEventListener('click', () => {
+        document.getElementById('tela-login').style.display = 'flex';
+    });
+
+    // Menu e Navegação
+    const btnMenuMobile = document.getElementById('btn-menu-mobile');
+    if (btnMenuMobile) btnMenuMobile.addEventListener('click', toggleMenuMobile);
+
+    const linksNavegacao = document.querySelectorAll('.link-navegacao');
+    linksNavegacao.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const alvo = link.getAttribute('data-alvo');
+            if (alvo) navegarPara(alvo);
+        });
+    });
+
+
+    // Inputs e Selects
     const select = document.getElementById('municipio-select');
     if (select) {
         select.addEventListener('change', (e) => {
             const id = e.target.value;
-            if (id) carregarDadosMunicipio(id);
+            if (id === 'todos') {
+                carregarEstatisticasTodosMunicipios();
+            } else if (id) {
+                carregarDadosMunicipio(id);
+            }
         });
     }
 
-    const inputBusca = document.getElementById('input-busca-aluno');
-    if (inputBusca) {
-        inputBusca.addEventListener('input', (e) => {
-            const termo = e.target.value.toLowerCase();
-            const filtrados = listaGlobalAlunos.filter(aluno => 
-                aluno.nome.toLowerCase().includes(termo) || 
-                (aluno.cpf && aluno.cpf.includes(termo))
-            );
-            renderizarTabelaAlunos(filtrados);
+    // Filtros da Tabela de Alunos
+    ['filtro-nome-cpf', 'filtro-municipio', 'filtro-edicao', 'filtro-status'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', aplicarFiltrosAlunos);
+    });
+    document.getElementById('filtro-aptos-avancado')?.addEventListener('change', aplicarFiltrosAlunos);
+
+    // Perfil Pessoal
+    const btnAlterarSenha = document.getElementById('btn-alterar-senha');
+    if (btnAlterarSenha) btnAlterarSenha.addEventListener('click', alterarMinhaSenha);
+
+    // Gestão de Usuários (Modais e Ações)
+    const btnAbrirModalUser = document.getElementById('btn-abrir-modal-usuario');
+    if (btnAbrirModalUser) btnAbrirModalUser.addEventListener('click', abrirModalUsuario);
+
+    const btnFecharModalUser = document.getElementById('btn-fechar-modal-usuario');
+    if (btnFecharModalUser) btnFecharModalUser.addEventListener('click', fecharModalUsuario);
+
+    const btnSalvarNovoUser = document.getElementById('btn-salvar-novo-usuario');
+    if (btnSalvarNovoUser) btnSalvarNovoUser.addEventListener('click', salvarNovoUsuario);
+
+    const btnFecharModalEditar = document.getElementById('btn-fechar-modal-editar');
+    if (btnFecharModalEditar) btnFecharModalEditar.addEventListener('click', fecharModalEditar);
+
+    const btnConfirmarEdicaoUser = document.getElementById('btn-confirmar-edicao-usuario');
+    if (btnConfirmarEdicaoUser) btnConfirmarEdicaoUser.addEventListener('click', confirmarEdicaoUsuario);
+
+    // 4. Delegação de Eventos para Elementos Gerados Dinamicamente
+    
+    // Tabela de Usuários (Botões Editar e Excluir)
+    const tabelaUsuarios = document.getElementById('tabela-corpo-usuarios');
+    if (tabelaUsuarios) {
+        tabelaUsuarios.addEventListener('click', (event) => {
+            const btnEditar = event.target.closest('.btn-editar-usuario');
+            if (btnEditar) {
+                abrirModalEditar(
+                    btnEditar.getAttribute('data-id'),
+                    btnEditar.getAttribute('data-nome'),
+                    btnEditar.getAttribute('data-role')
+                );
+                return;
+            }
+
+            const btnExcluir = event.target.closest('.btn-excluir-usuario');
+            if (btnExcluir) {
+                deletarUsuario(
+                    btnExcluir.getAttribute('data-id'),
+                    btnExcluir.getAttribute('data-nome')
+                );
+            }
+        });
+    }
+
+    // Painel de Edições (Cliques nos municípios dentro dos cards)
+    const listaCursosEdicoes = document.getElementById('lista-cursos-edicoes');
+    if (listaCursosEdicoes) {
+        listaCursosEdicoes.addEventListener('click', (event) => {
+            const itemMunicipio = event.target.closest('.item-municipio-link');
+            if (itemMunicipio) {
+                const id = itemMunicipio.getAttribute('data-id');
+                if (id) irParaMunicipio(id);
+            }
         });
     }
 });
@@ -615,17 +829,16 @@ let timerInatividade;
 const TEMPO_LIMITE_MS = 30 * 60 * 1000; // 30 minutos
 
 function resetarTimer() {
-    clearTimeout(timerInatividade);
-    timerInatividade = setTimeout(async () => {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) {
-            console.log("Sua sessão expirou devido a 30 minutos de inatividade. Por segurança, faça o login novamente.");
-            realizarLogout();
-        }
-    }, TEMPO_LIMITE_MS);
+  clearTimeout(timerInatividade);
+  timerInatividade = setTimeout(async () => {
+    const { user } = await apiNISP.getSession();
+    if (user) {
+      console.log("Sessão expirada por inatividade.");
+      realizarLogout();
+    }
+  }, TEMPO_LIMITE_MS);
 }
 
-// Escuta os movimentos do mouse e teclado na tela inteira
 ['mousemove', 'keydown', 'scroll', 'click'].forEach(evento => {
     document.addEventListener(evento, resetarTimer);
 });
@@ -641,6 +854,7 @@ async function alterarMinhaSenha() {
     const senha1 = document.getElementById('nova-senha-input').value;
     const senha2 = document.getElementById('confirma-senha-input').value;
     const msg = document.getElementById('msg-perfil');
+    msg.textContent = "";
     
     if (senha1.length < 6) {
         msg.textContent = "A senha deve ter no mínimo 6 caracteres."; msg.style.color = "red"; return;
@@ -676,8 +890,8 @@ async function carregarListaDeUsuarios() {
                 <td style="padding: 12px;">${u.email}</td>
                 <td style="padding: 12px;"><span style="background: ${u.role === 'admin' ? '#1e3c99' : '#6c757d'}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">${u.role.toUpperCase()}</span></td>
                 <td style="padding: 12px; text-align: center;">
-                    <button onclick="abrirModalEditar('${u.id}', '${u.nome}', '${u.role}')" style="background: #e68f1d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;"><i class="fa-solid fa-pen"></i> Editar</button>
-                    <button onclick="deletarUsuario('${u.id}', '${u.nome}')" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    <button class="btn-editar-usuario" data-id="${u.id}" data-nome="${u.nome}" data-role="${u.role}" style="background: #dba052; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;"><i class="fa-solid fa-pen"></i> Editar</button>
+                    <button class="btn-excluir-usuario" data-id="${u.id}" data-nome="${u.nome}" style="background: #e76d79; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-trash"></i> Excluir</button>
                 </td>
             </tr>
         `).join('');
@@ -706,11 +920,11 @@ async function salvarNovoUsuario() {
     } catch (error) { alert("Erro ao criar usuário: " + error.message); }
 }
 
-// Ações de Edição
 function abrirModalEditar(id, nome, role) {
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-nome').value = nome;
     document.getElementById('edit-role').value = role;
+    document.getElementById('edit-senha').value = '';
     document.getElementById('modal-editar-usuario').style.display = 'flex';
 }
 function fecharModalEditar() { document.getElementById('modal-editar-usuario').style.display = 'none'; }
@@ -719,16 +933,24 @@ async function confirmarEdicaoUsuario() {
     const id = document.getElementById('edit-id').value;
     const nome = document.getElementById('edit-nome').value;
     const role = document.getElementById('edit-role').value;
+    const novaSenha = document.getElementById('edit-senha').value;
+
+    const payload = { userId: id, nome, role };
+    if (novaSenha && novaSenha.length >= 6) {
+        payload.password = novaSenha;
+    } else if (novaSenha && novaSenha.length > 0) {
+        alert("A nova senha deve ter pelo menos 6 caracteres.");
+        return;
+    }
 
     try {
-        await apiNISP.gerenciarUsuario('update', { userId: id, nome, role });
+        await apiNISP.gerenciarUsuario('update', payload);
         alert("Usuário atualizado com sucesso!");
         fecharModalEditar();
         carregarListaDeUsuarios();
     } catch (error) { alert("Erro ao atualizar: " + error.message); }
-}
+    }
 
-// Ação de Excluir
 async function deletarUsuario(id, nome) {
     if (confirm(`Atenção! Você tem certeza que deseja EXCLUIR definitivamente o acesso do usuário ${nome}?`)) {
         try {
